@@ -1,0 +1,19 @@
+EXCLU FEST 009 · NUEVO DISEÑO + ARCADE
+
+1. Copia el contenido sobre tu carpeta exclu-fest.
+2. Conserva tu .env.local actual.
+3. No hay migración SQL nueva en esta versión.
+4. Ejecuta: npm install (solo si hace falta) y npm run dev.
+5. Haz Ctrl+F5.
+
+CAMBIOS:
+- Diseño de escritorio usa el boceto 009 como referencia visual exacta y hotspots funcionales.
+- Ruleta reescrita con requestAnimationFrame: giro continuo + frenado suave.
+- Pantalla de premio reforzada a pantalla completa.
+- Fotomatón completo se mantiene.
+- Arcade: Rasca EXCLU, EXCLU Vuela, Encuentra a EXCLU, Memoria EXCLU y Lanza Aros.
+- Eliminados Tragaperras y Botón de la Suerte.
+- EXCLU Vuela usa habilidad, objetos, distancia, récord local y Cofre EXCLU al llegar a meta.
+
+NOTA:
+Los minijuegos Arcade no crean premios reales ni participaciones adicionales en Supabase. Los premios reales siguen ligados a los juegos diarios ya validados. Esto evita alterar la lógica segura de premios mientras probamos la experiencia arcade.

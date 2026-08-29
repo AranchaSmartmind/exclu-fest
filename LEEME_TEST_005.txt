@@ -1,0 +1,21 @@
+EXCLU FEST — 005 HERRAMIENTAS DE PRUEBA
+
+1) Copia esta carpeta sobre tu proyecto exclu-fest conservando tu .env.local.
+2) En Supabase > SQL Editor ejecuta SOLO:
+   supabase/migrations/005_safe_test_tools.sql
+3) Recarga /admin con Ctrl+F5.
+4) En MODO PRUEBAS aparecerá "Herramientas de prueba".
+
+RESET PARTICIPANTE DE PRUEBA:
+- Solo afecta al participante asociado al navegador/sesión admin actual.
+- Conserva su registro y teléfono.
+- Borra sus jugadas, premios y entradas del sorteo.
+- Devuelve al stock únicamente los premios que ese participante había consumido.
+- Si figura como ganador, primero obliga a resetear el sorteo.
+
+RESET SORTEO DE PRUEBA:
+- Borra solo el sorteo y los ganadores.
+- No borra participantes ni entradas.
+
+SEGURIDAD:
+Ambas RPC comprueban is_admin() y test_mode=true en servidor. Con test_mode=false quedan bloqueadas aunque alguien intente llamarlas manualmente.

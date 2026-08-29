@@ -1,0 +1,30 @@
+EXCLU FEST · VERSION 006 · ANIMACIONES + SONIDO + JUEGOS
+
+Esta versión se instala copiando el contenido sobre tu carpeta exclu-fest.
+NO sustituye .env.local.
+NO requiere ejecutar ninguna migración SQL nueva.
+
+NOVEDADES
+- Botón flotante para activar/desactivar sonido.
+- Sonidos generados en el navegador: ruleta, acierto, error, premio y apertura.
+- Ruleta mejorada: giro largo, puntero, halo y efectos.
+- Reto del Coto: barra de progreso, sonido y animación de acierto/error.
+- Caja fuerte: temblor, apertura y destello.
+- Pantalla de resultado: confeti, sonido y efecto de celebración.
+- EXCLU ARCADE con 4 juegos extra SOLO POR DIVERSIÓN:
+  1. Rasca EXCLU
+  2. Tragaperras EXCLU
+  3. Botón de la suerte
+  4. Encuentra a EXCLU
+- Los juegos extra NO generan premios ni entradas de sorteo, para no afectar a la lógica segura ya probada.
+- Respeta prefers-reduced-motion para accesibilidad.
+
+INSTALACIÓN
+1. Copia todo sobre C:\Users\Usuario\Desktop\exclu-fest
+2. Conserva tu .env.local actual.
+3. No ejecutes SQL.
+4. Ejecuta npm install si fuera necesario y luego npm run dev.
+5. Haz Ctrl+F5.
+
+SIGUIENTE FASE RECOMENDADA
+Fotomatón completo: cámara real, cuenta atrás, marco EXCLU, stickers y descarga/compartir.
