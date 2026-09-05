@@ -9559,3 +9559,57 @@
     opacity .19s ease-in,
     transform .19s ease-in!important;
 }
+
+
+/* ============================================================
+   135 · STICKERS MÚLTIPLES · MOVER + ESCALAR
+   ============================================================ */
+.p112-placed-sticker{
+  position:absolute!important;
+  z-index:18!important;
+  transform-origin:center center!important;
+  touch-action:none!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  pointer-events:auto!important;
+  line-height:1!important;
+}
+
+.p112-placed-sticker > span{
+  display:block!important;
+  font-size:42px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))!important;
+}
+
+.p112-placed-sticker.textual > span{
+  font-size:17px!important;
+  font-weight:900!important;
+  color:#ffd329!important;
+  text-shadow:0 2px 4px rgba(0,0,0,.8)!important;
+}
+
+.p112-placed-sticker.active{
+  outline:1.5px dashed rgba(0,239,255,.95)!important;
+  outline-offset:5px!important;
+}
+
+.p112-sticker-delete{
+  position:absolute!important;
+  right:-18px!important;
+  top:-18px!important;
+  width:24px!important;
+  height:24px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+  border:1px solid #fff!important;
+  background:#000!important;
+  color:#fff!important;
+  font-size:18px!important;
+  line-height:20px!important;
+  font-weight:900!important;
+  z-index:3!important;
+  pointer-events:auto!important;
+}

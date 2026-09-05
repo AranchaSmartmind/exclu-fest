@@ -666,3 +666,14 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Se elimina completamente el fotograma congelado y su recuadro.
 - La transición desaparece solo cuando la nueva cámara ya tiene un frame real.
 - No se modifica zoom, marcos, stickers, filtros, botones, navegación ni otras pantallas.
+
+
+## 135 · Stickers múltiples libres
+- Cada pulsación en el panel añade una nueva copia del sticker.
+- Se pueden añadir tantos stickers como se quiera.
+- Arrastrar con un dedo para moverlos por cualquier parte de la foto.
+- Pellizcar con dos dedos sobre un sticker para agrandarlo o reducirlo.
+- Rango de tamaño aproximado: 0.35x–3.25x.
+- El sticker seleccionado muestra un contorno de edición y un botón × para eliminarlo.
+- La fotografía final conserva todos los stickers, posiciones y tamaños.
+- No se modifica la transición de cámara aprobada ni ninguna otra función cerrada.

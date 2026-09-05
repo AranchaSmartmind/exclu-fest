@@ -1086,6 +1086,25 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [flash,setFlash]=useState(false);
   const [frame,setFrame]=useState("classic");
   const [sticker,setSticker]=useState("exclu");
+  type PlacedSticker = {
+    id:string;
+    kind:string;
+    x:number;
+    y:number;
+    scale:number;
+  };
+  const [placedStickers,setPlacedStickers]=useState<PlacedSticker[]>([]);
+  const [activeStickerId,setActiveStickerId]=useState<string|null>(null);
+  const stickerGestureRef=useRef<{
+    id:string;
+    mode:"drag"|"pinch";
+    startX:number;
+    startY:number;
+    startStickerX:number;
+    startStickerY:number;
+    startDistance:number;
+    startScale:number;
+  }|null>(null);
   const [filter,setFilter]=useState("normal");
 
   const frameIds=["classic","party","selfie","cheers","good","team","asturias"];
@@ -1360,6 +1379,101 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     };
   },[]);
 
+  const stickerGlyphs:Record<string,string>={
+    exclu:"🤖",
+    salud:"¡Salud!",
+    beer:"🍻",
+    hearts:"💕",
+    crown:"👑",
+    glasses:"🕶️",
+    confetti:"🎉",
+    heart:"💗",
+    coffee:"☕",
+    exclusive:"LA EXCLUSIVA",
+    selfie:"Selfie Time ♡",
+    fiestas:"FIESTAS 2026"
+  };
+
+  function addSticker(kind:string){
+    setSticker(kind);
+    const id=`${kind}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    setPlacedStickers(prev=>[
+      ...prev,
+      {id,kind,x:50,y:50,scale:1}
+    ]);
+    setActiveStickerId(id);
+  }
+
+  function updatePlacedSticker(id:string, patch:Partial<PlacedSticker>){
+    setPlacedStickers(prev=>prev.map(s=>s.id===id?{...s,...patch}:s));
+  }
+
+  function removePlacedSticker(id:string){
+    setPlacedStickers(prev=>prev.filter(s=>s.id!==id));
+    setActiveStickerId(prev=>prev===id?null:prev);
+  }
+
+  function placedStickerTouchStart(e:React.TouchEvent<HTMLDivElement>, id:string){
+    e.stopPropagation();
+    const s=placedStickers.find(item=>item.id===id);
+    if(!s)return;
+
+    setActiveStickerId(id);
+
+    if(e.touches.length>=2){
+      const d=touchDistance(e.touches) || 1;
+      stickerGestureRef.current={
+        id,mode:"pinch",
+        startX:0,startY:0,
+        startStickerX:s.x,startStickerY:s.y,
+        startDistance:d,startScale:s.scale
+      };
+      return;
+    }
+
+    const t=e.touches[0];
+    stickerGestureRef.current={
+      id,mode:"drag",
+      startX:t.clientX,startY:t.clientY,
+      startStickerX:s.x,startStickerY:s.y,
+      startDistance:0,startScale:s.scale
+    };
+  }
+
+  function placedStickerTouchMove(e:React.TouchEvent<HTMLDivElement>){
+    const g=stickerGestureRef.current;
+    if(!g)return;
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    const preview=previewRef.current;
+    if(!preview)return;
+    const rect=preview.getBoundingClientRect();
+
+    if(e.touches.length>=2){
+      const d=touchDistance(e.touches);
+      if(!d || !g.startDistance)return;
+      const nextScale=Math.min(3.25,Math.max(.35,g.startScale*(d/g.startDistance)));
+      updatePlacedSticker(g.id,{scale:nextScale});
+      return;
+    }
+
+    if(g.mode==="drag" && e.touches.length===1){
+      const t=e.touches[0];
+      const dx=((t.clientX-g.startX)/rect.width)*100;
+      const dy=((t.clientY-g.startY)/rect.height)*100;
+      updatePlacedSticker(g.id,{
+        x:Math.min(96,Math.max(4,g.startStickerX+dx)),
+        y:Math.min(96,Math.max(4,g.startStickerY+dy))
+      });
+    }
+  }
+
+  function placedStickerTouchEnd(){
+    stickerGestureRef.current=null;
+  }
+
   function touchDistance(touches: React.TouchList){
     if(touches.length<2)return null;
     const a=touches[0],b=touches[1];
@@ -1455,13 +1569,24 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     x.textBaseline="middle";
     x.fillText(names[frame],outW/2,border+topH/2);
 
-    const st:Record<string,string>={exclu:"🤖",salud:"¡Salud!",beer:"🍻",hearts:"💕",crown:"👑",glasses:"🕶️",confetti:"🎉",heart:"💗",coffee:"☕",exclusive:"LA EXCLUSIVA",selfie:"Selfie Time ♡",fiestas:"FIESTAS 2026"};
-    const isText=["salud","exclusive","selfie","fiestas"].includes(sticker);
-    x.font=isText?`700 ${Math.round(outW*.048)}px sans-serif`:`${Math.round(outW*.095)}px sans-serif`;
-    x.textAlign="right";
-    x.textBaseline="alphabetic";
-    x.fillStyle="#ffd329";
-    x.fillText(st[sticker],outW-Math.round(outW*.045),outH-Math.round(outH*.045));
+    // Todos los stickers, respetando posición y tamaño.
+    for(const ps of placedStickers){
+      const glyph=stickerGlyphs[ps.kind]||ps.kind;
+      const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
+      const px=(ps.x/100)*outW;
+      const py=(ps.y/100)*outH;
+      const baseSize=isText?Math.round(outW*.048):Math.round(outW*.095);
+
+      x.save();
+      x.font=isText
+        ? `700 ${Math.round(baseSize*ps.scale)}px sans-serif`
+        : `${Math.round(baseSize*ps.scale)}px sans-serif`;
+      x.textAlign="center";
+      x.textBaseline="middle";
+      x.fillStyle="#ffd329";
+      x.fillText(glyph,px,py);
+      x.restore();
+    }
 
     setPhotoUrl(c.toDataURL("image/jpeg",.92));
     onPhotoCreated();
@@ -1494,13 +1619,39 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
         <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
+        {!photoUrl&&placedStickers.map((ps)=>{
+          const glyph=stickerGlyphs[ps.kind]||ps.kind;
+          const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
+          return <div
+            key={ps.id}
+            className={`p112-placed-sticker ${activeStickerId===ps.id?"active":""} ${isText?"textual":""}`}
+            style={{
+              left:`${ps.x}%`,
+              top:`${ps.y}%`,
+              transform:`translate(-50%,-50%) scale(${ps.scale})`
+            }}
+            onTouchStart={(e)=>placedStickerTouchStart(e,ps.id)}
+            onTouchMove={placedStickerTouchMove}
+            onTouchEnd={placedStickerTouchEnd}
+            onClick={(e)=>{e.stopPropagation();setActiveStickerId(ps.id)}}
+          >
+            <span>{glyph}</span>
+            {activeStickerId===ps.id&&
+              <button
+                className="p112-sticker-delete"
+                onClick={(e)=>{e.stopPropagation();removePlacedSticker(ps.id)}}
+                aria-label="Eliminar sticker"
+              >×</button>
+            }
+          </div>
+        })}
       </div>
 
       <div className="p112-frames">
         {frameIds.map((id,i)=><button key={id} className={frame===id?"active":""} style={{top:`${i*14.2857}%`}} onClick={()=>setFrame(id)} aria-label={`Marco ${id}`}/>)}
       </div>
       <div className="p112-stickers">
-        {stickerIds.map((id,i)=><button key={id} className={sticker===id?"active":""} style={{left:`${(i%2)*50}%`,top:`${Math.floor(i/2)*16.6667}%`}} onClick={()=>setSticker(id)} aria-label={`Sticker ${id}`}/>)}
+        {stickerIds.map((id,i)=><button key={id} className={sticker===id?"active":""} style={{left:`${(i%2)*50}%`,top:`${Math.floor(i/2)*16.6667}%`}} onClick={()=>addSticker(id)} aria-label={`Añadir sticker ${id}`}/>)}
       </div>
       <div className="p112-filters">
         {filterIds.map((id,i)=><button key={id} className={filter===id?"active":""} style={{left:`${(i%2)*50}%`,top:`${Math.floor(i/2)*33.3333}%`}} onClick={()=>setFilter(id)} aria-label={`Filtro ${id}`}/>)}
