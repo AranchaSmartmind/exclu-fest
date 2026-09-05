@@ -658,3 +658,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Solo aparece durante frontal ↔ trasera.
 - Entrada y salida breve para ocultar el reinicio del stream en iPhone/Safari.
 - No se modifica zoom, marcos, stickers, filtros, botones, navegación ni pantallas congeladas.
+
+
+## 134 · Transición aprobada corregida
+- La transición aparece ANTES de cerrar la cámara actual.
+- Permanece cubriendo todo el visor durante el cambio real de stream.
+- Se elimina completamente el fotograma congelado y su recuadro.
+- La transición desaparece solo cuando la nueva cámara ya tiene un frame real.
+- No se modifica zoom, marcos, stickers, filtros, botones, navegación ni otras pantallas.

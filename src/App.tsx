@@ -1236,13 +1236,16 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     const previous=streamRef.current;
 
     try{
-      // Congelamos exactamente lo que el usuario está viendo.
-      freezeCurrentCameraFrame();
-
-      // Muy importante en iPhone: damos tiempo a React/Safari a pintar
-      // el fotograma congelado ANTES de detener la cámara actual.
+      // 1) Mostramos PRIMERO la transición aprobada.
+      // Así nunca se ve el stream congelado ni el fondo del visor.
+      setCameraShutter("closing");
+      setSwitchFrame(null);
+      setCameraCrossfade(false);
       await nextPaint();
+      await new Promise(resolve=>setTimeout(resolve,140));
 
+      // 2) Con la transición ya cubriendo todo el visor,
+      // cerramos la cámara actual y abrimos la nueva.
       previous?.getTracks().forEach(track=>track.stop());
 
       const stream=await getCameraStream(next);
@@ -1254,27 +1257,38 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         video.muted=true;
         video.playsInline=true;
 
-        // Esperamos a que la nueva cámara tenga datos reales.
         if(video.readyState<2){
           await new Promise<void>((resolve)=>{
-            const done=()=>resolve();
+            let settled=false;
+            const done=()=>{
+              if(settled)return;
+              settled=true;
+              resolve();
+            };
             video.addEventListener("loadeddata",done,{once:true});
-            setTimeout(done,1200);
+            setTimeout(done,1400);
           });
         }
 
         await video.play();
 
-        // Esperamos a que Safari pinte al menos un frame nuevo.
+        // Esperamos a que exista un frame real de la nueva cámara.
         if("requestVideoFrameCallback" in video){
           await new Promise<void>((resolve)=>{
+            let settled=false;
+            const done=()=>{
+              if(settled)return;
+              settled=true;
+              resolve();
+            };
             (video as HTMLVideoElement & {
               requestVideoFrameCallback?: (cb:()=>void)=>number
-            }).requestVideoFrameCallback?.(()=>resolve());
-            setTimeout(resolve,500);
+            }).requestVideoFrameCallback?.(done);
+            setTimeout(done,650);
           });
         }else{
           await nextPaint();
+          await new Promise(resolve=>setTimeout(resolve,80));
         }
       }
 
@@ -1284,20 +1298,9 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       setCameraActivated(true);
       setPhotoUrl(null);
 
-      // Safari/iPhone necesita reiniciar físicamente el stream.
-      // En vez de enseñar ese salto, lo ocultamos con un obturador muy breve.
-      setCameraShutter("closing");
-      await new Promise(resolve=>setTimeout(resolve,120));
-
-      setCameraCrossfade(true);
-      await nextPaint();
-
-      setSwitchFrame(null);
-
+      // 3) La nueva cámara ya está lista: abrimos el obturador.
       setCameraShutter("opening");
-      await new Promise(resolve=>setTimeout(resolve,170));
-
-      setCameraCrossfade(false);
+      await new Promise(resolve=>setTimeout(resolve,190));
       setCameraShutter("idle");
 
     }catch(err){
@@ -1319,18 +1322,19 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         setFacing(currentFacing);
         setCameraOn(true);
         setCameraActivated(true);
-        setSwitchFrame(null);
-        setCameraCrossfade(false);
+
+        setCameraShutter("opening");
+        await new Promise(resolve=>setTimeout(resolve,160));
         setCameraShutter("idle");
       }catch(recoveryError){
         console.error("Error al recuperar la cámara:",recoveryError);
         setCameraOn(false);
-        setCameraCrossfade(false);
-        setCameraShutter("idle");
-        // Seguimos sin enseñar nunca la pantalla "Activar cámara".
         setCameraActivated(true);
+        setCameraShutter("idle");
       }
     }finally{
+      setSwitchFrame(null);
+      setCameraCrossfade(false);
       setCameraSwitching(false);
     }
   }
@@ -1489,7 +1493,6 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
         <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
-        {switchFrame&&!photoUrl&&<img src={switchFrame} alt="" className="p112-switch-frame" aria-hidden="true"/>}
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
       </div>
 

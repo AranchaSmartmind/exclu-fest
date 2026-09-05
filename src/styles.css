@@ -9496,3 +9496,66 @@
   opacity:1!important;
   transform:none!important;
 }
+
+
+/* ============================================================
+   134 · TRANSICIÓN APROBADA · SIN CONGELADO / SIN RECUADRO
+   ============================================================ */
+
+/* Nunca mostramos el fotograma congelado antiguo. */
+.p112-switch-frame{
+  display:none!important;
+}
+
+/* La transición ocupa TODO el visor, sin recuadros internos. */
+.p112-camera-shutter{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:50!important;
+  overflow:hidden!important;
+  background:#000!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  pointer-events:none!important;
+}
+
+/* Imagen aprobada: blanco/negro, cubre todo el visor. */
+.p112-camera-shutter img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  display:block!important;
+  filter:grayscale(1) contrast(1.08)!important;
+}
+
+/* Entrada rápida antes de cerrar el stream. */
+.p112-camera-shutter.closing{
+  opacity:1!important;
+}
+.p112-camera-shutter.closing img{
+  opacity:1!important;
+  transform:scale(1) rotate(0deg)!important;
+  transition:
+    opacity .14s ease-out,
+    transform .14s ease-out!important;
+}
+
+/* Salida cuando la cámara nueva YA está lista. */
+.p112-camera-shutter.opening{
+  opacity:1!important;
+}
+.p112-camera-shutter.opening img{
+  opacity:0!important;
+  transform:scale(1.08) rotate(7deg)!important;
+  transition:
+    opacity .19s ease-in,
+    transform .19s ease-in!important;
+}
