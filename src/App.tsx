@@ -1077,6 +1077,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [cameraSwitching,setCameraSwitching]=useState(false);
   const [switchFrame,setSwitchFrame]=useState<string|null>(null);
   const [cameraCrossfade,setCameraCrossfade]=useState(false);
+  const [cameraShutter,setCameraShutter]=useState<"idle"|"closing"|"opening">("idle");
   const [cameraZoom,setCameraZoom]=useState(1);
   const pinchStartRef=useRef<number|null>(null);
   const pinchZoomStartRef=useRef(1);
@@ -1283,14 +1284,21 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       setCameraActivated(true);
       setPhotoUrl(null);
 
-      // Crossfade corto: la nueva cámara entra suavemente mientras
-      // el último fotograma de la anterior se desvanece.
+      // Safari/iPhone necesita reiniciar físicamente el stream.
+      // En vez de enseñar ese salto, lo ocultamos con un obturador muy breve.
+      setCameraShutter("closing");
+      await new Promise(resolve=>setTimeout(resolve,90));
+
       setCameraCrossfade(true);
       await nextPaint();
-      await new Promise(resolve=>setTimeout(resolve,180));
+
       setSwitchFrame(null);
-      await new Promise(resolve=>setTimeout(resolve,80));
+
+      setCameraShutter("opening");
+      await new Promise(resolve=>setTimeout(resolve,130));
+
       setCameraCrossfade(false);
+      setCameraShutter("idle");
 
     }catch(err){
       console.error("Error al cambiar de cámara:",err);
@@ -1313,10 +1321,12 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         setCameraActivated(true);
         setSwitchFrame(null);
         setCameraCrossfade(false);
+        setCameraShutter("idle");
       }catch(recoveryError){
         console.error("Error al recuperar la cámara:",recoveryError);
         setCameraOn(false);
         setCameraCrossfade(false);
+        setCameraShutter("idle");
         // Seguimos sin enseñar nunca la pantalla "Activar cámara".
         setCameraActivated(true);
       }
@@ -1470,6 +1480,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
       <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
+        {cameraShutter!=="idle"&&<div className={`p112-camera-shutter ${cameraShutter}`} aria-hidden="true"/>}
         {cameraActivated&&!photoUrl&&<div className="p112-live-bg" aria-hidden="true"/>}
       <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}

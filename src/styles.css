@@ -9389,3 +9389,54 @@
 .p112-live-bg{
   transition:none!important;
 }
+
+
+/* ============================================================
+   132 · TRANSICIÓN DE CÁMARA TIPO OBTURADOR
+   En iPhone/Safari el cambio de lente exige reiniciar el stream.
+   Ese corte no puede eliminarse físicamente en una web, así que
+   lo ocultamos con un obturador de ~220 ms.
+   ============================================================ */
+
+.p112-camera-shutter{
+  position:absolute!important;
+  inset:-2%!important;
+  z-index:20!important;
+  pointer-events:none!important;
+  background:radial-gradient(
+    circle at center,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,.05) 38%,
+    rgba(0,0,0,.92) 72%,
+    #000 100%
+  )!important;
+  opacity:0!important;
+  transform:scale(1.12)!important;
+  transition:
+    opacity .09s ease,
+    transform .09s ease!important;
+}
+
+.p112-camera-shutter.closing{
+  opacity:1!important;
+  transform:scale(.78)!important;
+}
+
+.p112-camera-shutter.opening{
+  opacity:0!important;
+  transform:scale(1.18)!important;
+  transition:
+    opacity .13s ease,
+    transform .13s ease!important;
+}
+
+/* El frame anterior ya no hace un crossfade largo que delate la pausa. */
+.p112-switch-frame{
+  transition:opacity .08s linear!important;
+}
+
+.p112-preview.camera-crossfade .p112-switch-frame{
+  opacity:0!important;
+  filter:none!important;
+  transform:none!important;
+}

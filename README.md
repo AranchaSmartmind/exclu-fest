@@ -644,3 +644,10 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - La cámara nueva entra con un crossfade breve sobre el último frame de la anterior.
 - El frame anterior se desvanece con un ligero blur, evitando sensación de congelación brusca.
 - No modifica zoom 1x–3x ni el resto del diseño.
+
+
+## 132 · Transición tipo obturador
+- Oculta el corte inevitable de Safari/iPhone al reiniciar el stream.
+- Sustituye el crossfade largo por un obturador breve (~220 ms).
+- No muestra 'Activa la cámara'.
+- Mantiene intacto el zoom 1x–3x y el resto del Fotomatón.
