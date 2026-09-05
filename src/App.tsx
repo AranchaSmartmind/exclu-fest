@@ -1072,6 +1072,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const streamRef=useRef<MediaStream|null>(null);
   const [cameraOn,setCameraOn]=useState(false);
+  const [cameraActivated,setCameraActivated]=useState(false);
   const [cameraSwitching,setCameraSwitching]=useState(false);
   const [photoUrl,setPhotoUrl]=useState<string|null>(null);
   const [facing,setFacing]=useState<"user"|"environment">("user");
@@ -1098,6 +1099,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       videoRef.current.srcObject=null;
     }
     setCameraOn(false);
+    setCameraActivated(false);
   }
 
   async function getCameraStream(next: "user" | "environment"){
@@ -1142,6 +1144,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       }
 
       setCameraOn(true);
+      setCameraActivated(true);
     }catch(err){
       console.error("Error al abrir la cámara:",err);
       setCameraOn(false);
@@ -1173,6 +1176,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
       setFacing(next);
       setCameraOn(true);
+      setCameraActivated(true);
       setPhotoUrl(null);
     }catch(err){
       console.error("Error al cambiar de cámara:",err);
@@ -1189,9 +1193,11 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         }
         setFacing(currentFacing);
         setCameraOn(true);
+        setCameraActivated(true);
       }catch(recoveryError){
         console.error("Error al recuperar la cámara:",recoveryError);
         setCameraOn(false);
+        setCameraActivated(true);
       }
     }finally{
       setCameraSwitching(false);
@@ -1199,23 +1205,69 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   }
   function capture(){
     const v=videoRef.current,c=canvasRef.current;
-    if(!v||!c||!cameraOn)return;
-    const vw=v.videoWidth||1080,vh=v.videoHeight||1080,size=Math.min(vw,vh);
-    c.width=1080;c.height=1080;
-    const x=c.getContext("2d");if(!x)return;
+    if(!v||!c||!cameraOn||v.readyState<2)return;
+
+    const vw=v.videoWidth||1080;
+    const vh=v.videoHeight||1440;
+
+    // Misma proporción que el visor del Fotomatón.
+    const previewAspect=(45.90*1024)/(40.65*1536);
+    const outW=1080;
+    const outH=Math.round(outW/previewAspect);
+
+    c.width=outW;
+    c.height=outH;
+
+    const x=c.getContext("2d");
+    if(!x)return;
+
+    // Recorte "cover" idéntico al que ve el usuario en el <video>.
+    const sourceAspect=vw/vh;
+    let sx=0,sy=0,sw=vw,sh=vh;
+    if(sourceAspect>previewAspect){
+      sw=vh*previewAspect;
+      sx=(vw-sw)/2;
+    }else{
+      sh=vw/previewAspect;
+      sy=(vh-sh)/2;
+    }
+
     x.save();
-    if(facing==="user"){x.translate(1080,0);x.scale(-1,1);}
+    if(facing==="user"){
+      x.translate(outW,0);
+      x.scale(-1,1);
+    }
     x.filter=filterCss[filter]||"none";
-    x.drawImage(v,(vw-size)/2,(vh-size)/2,size,size,0,0,1080,1080);
+    x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
     x.restore();
-    x.strokeStyle="#f6c51c";x.lineWidth=22;x.strokeRect(12,12,1056,1056);
+
+    // Marco sobre la misma composición que se veía antes de disparar.
+    const border=Math.max(18,Math.round(outW*.02));
+    x.strokeStyle="#f6c51c";
+    x.lineWidth=border;
+    x.strokeRect(border/2,border/2,outW-border,outH-border);
+
     const names:Record<string,string>={classic:"LA EXCLUSIVA",party:"FIESTAS",selfie:"SELFIE EXCLU",cheers:"BRINDIS",good:"BUEN ROLLO",team:"EQUIPO EXCLU",asturias:"ASTURIAS"};
-    x.fillStyle="rgba(0,0,0,.68)";x.fillRect(25,25,1030,90);
-    x.fillStyle="#ffd329";x.font="700 36px sans-serif";x.textAlign="center";x.fillText(names[frame],540,82);
+    const topH=Math.round(outH*.075);
+    x.fillStyle="rgba(0,0,0,.68)";
+    x.fillRect(border, border, outW-border*2, topH);
+    x.fillStyle="#ffd329";
+    x.font=`700 ${Math.round(outW*.034)}px sans-serif`;
+    x.textAlign="center";
+    x.textBaseline="middle";
+    x.fillText(names[frame],outW/2,border+topH/2);
+
     const st:Record<string,string>={exclu:"🤖",salud:"¡Salud!",beer:"🍻",hearts:"💕",crown:"👑",glasses:"🕶️",confetti:"🎉",heart:"💗",coffee:"☕",exclusive:"LA EXCLUSIVA",selfie:"Selfie Time ♡",fiestas:"FIESTAS 2026"};
-    x.font=["salud","exclusive","selfie","fiestas"].includes(sticker)?"700 52px sans-serif":"105px sans-serif";
-    x.textAlign="right";x.fillStyle="#ffd329";x.fillText(st[sticker],1015,1010);
-    setPhotoUrl(c.toDataURL("image/jpeg",.92));onPhotoCreated();navigator.vibrate?.(60);
+    const isText=["salud","exclusive","selfie","fiestas"].includes(sticker);
+    x.font=isText?`700 ${Math.round(outW*.048)}px sans-serif`:`${Math.round(outW*.095)}px sans-serif`;
+    x.textAlign="right";
+    x.textBaseline="alphabetic";
+    x.fillStyle="#ffd329";
+    x.fillText(st[sticker],outW-Math.round(outW*.045),outH-Math.round(outH*.045));
+
+    setPhotoUrl(c.toDataURL("image/jpeg",.92));
+    onPhotoCreated();
+    navigator.vibrate?.(60);
   }
   function save(){
     if(!photoUrl)return;const a=document.createElement("a");a.href=photoUrl;a.download=`exclu-fotomaton-${Date.now()}.jpg`;a.click();
@@ -1234,8 +1286,8 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
       <div className="p112-preview">
-        {!cameraOn&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
-        <video ref={videoRef} playsInline muted className={cameraOn&&!photoUrl?"show":""} style={{filter:filterCss[filter]}}/>
+        {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
+        <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter]}}/>
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
       </div>
 
@@ -1250,7 +1302,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       </div>
 
       <button className={`p112-switch ${cameraSwitching?"switching":""}`} onClick={switchCamera} disabled={cameraSwitching} aria-label={facing==="user"?"Cambiar a cámara trasera":"Cambiar a cámara frontal"}/>
-      <button className="p112-shot" onClick={()=>cameraOn?capture():startCamera()} aria-label="Hacer foto"/>
+      <button className="p112-shot" onClick={()=>{if(!cameraActivated){startCamera();return;} if(!cameraSwitching&&cameraOn)capture();}} aria-label="Hacer foto"/>
       <button className={`p112-flash ${flash?"active":""}`} onClick={()=>setFlash(v=>!v)} aria-label="Flash"/>
       {photoUrl&&<>
         <button className="p112-save" onClick={save} aria-label="Guardar"/>

@@ -9116,3 +9116,46 @@
 .p112-filters{
   z-index:70!important;
 }
+
+
+/* ============================================================
+   119 · CÁMARA PERSISTENTE ENTRE FRONTAL / TRASERA
+   Una vez activada, NO reaparece la pantalla "Activar cámara"
+   durante los cambios de lente.
+   ============================================================ */
+.p112-preview video.show{
+  display:block!important;
+  visibility:visible!important;
+}
+.p112-switch.switching{
+  cursor:wait!important;
+}
+
+
+/* ============================================================
+   120 · WYSIWYG + PANTALLA COMPLETA EN MÓVIL
+   - El visor y la foto final tienen la misma proporción.
+   - El lienzo completo se adapta también a la ALTURA disponible.
+   ============================================================ */
+.photo112{
+  min-height:100dvh!important;
+  width:100%!important;
+  display:flex!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+  overflow-x:hidden!important;
+  background:#000!important;
+}
+.photo112-stage{
+  width:min(100vw, 430px, calc(100dvh * 2 / 3))!important;
+  height:auto!important;
+  aspect-ratio:1024/1536!important;
+  flex:0 0 auto!important;
+}
+.p112-preview video,
+.p112-preview .p112-result{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+}

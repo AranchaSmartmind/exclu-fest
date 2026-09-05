@@ -559,3 +559,19 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Bloqueo temporal durante el cambio para evitar dobles pulsaciones.
 - Si falla el cambio, recupera la cámara anterior sin ocultar controles.
 - No se modifica el diseño aprobado ni las pantallas congeladas.
+
+
+## 119 · Cámara sin reactivar entre cambios
+- 'Activar cámara' solo aparece antes de la primera activación.
+- Al cambiar frontal/trasera el vídeo permanece en la misma zona.
+- No se vuelve a pedir activación visual en cada cambio.
+- Cámara, disparo y flash permanecen visibles.
+- No se modifica el diseño aprobado ni las pantallas congeladas.
+
+
+## 120 · Foto igual a previsualización + pantalla completa
+- La foto final conserva exactamente la proporción del visor.
+- El recorte de captura replica object-fit: cover del vídeo.
+- La cámara frontal conserva el espejo también en la foto final.
+- El Fotomatón se limita por ancho y por altura del viewport móvil.
+- No se modifican Home, Play Hub, Ruleta ni Pasaporte.
