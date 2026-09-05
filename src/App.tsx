@@ -222,11 +222,11 @@ function Customer() {
   }
 
   async function play(gameType: GameType, testDay: 11 | 12 | 13, choice?: string, presentResult = true): Promise<GameResult | null> {
-    if (busy) return;
+    if (busy) return null;
     if (!status.registered) {
       setNotice("Primero registra tu teléfono. No enviaremos ningún SMS.");
       document.getElementById("register")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
+      return null;
     }
 
     setBusy(true);
@@ -847,7 +847,7 @@ const questions = [
   ["¿Cuántos días dura EXCLU FEST?", ["1", "2", "3"], 2],
 ] as const;
 
-function Quiz({ busy, played, play }: { busy: boolean; played: boolean; play: () => Promise<void> }) {
+function Quiz({ busy, played, play }: { busy: boolean; played: boolean; play: () => Promise<GameResult | null> }) {
   const [n, setN] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
@@ -873,7 +873,7 @@ function Quiz({ busy, played, play }: { busy: boolean; played: boolean; play: ()
   </Card>;
 }
 
-function Boxes({ busy, played, play }: { busy: boolean; played: boolean; play: (choice: string) => Promise<void> }) {
+function Boxes({ busy, played, play }: { busy: boolean; played: boolean; play: (choice: string) => Promise<GameResult | null> }) {
   const [pick, setPick] = useState<number | null>(null);
   async function choose(n: number) {
     if (pick || busy || played) return;
@@ -1215,6 +1215,14 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
 function Card({ tone, tag, title, sub, children }: any) {
   return <section className={`card ${tone}`}><span className="tag">{tag}</span><h1>{title}</h1><p>{sub}</p>{children}<img className="robot" src="/assets/exclu-robot-premium.png" alt="EXCLU" /></section>;
+}
+
+function Prizes({ status }: { status: FestivalStatus }) {
+  const rewards = status.rewards ?? [];
+  return <Card tone="orange" tag="PREMIOS" title="MIS PREMIOS" sub="Tus premios y participaciones están guardados en Supabase">
+    <div className="prize-summary"><div><Ticket/><b>{status.raffle_entries ?? 0}</b><span>participaciones sorteo</span></div><div><Gift/><b>{rewards.length}</b><span>premios instantáneos</span></div></div>
+    <div className="list">{rewards.length === 0 ? <p>🎟️ Todavía no tienes premios instantáneos. Tus participaciones para los 3 desayunos para dos siguen contando.</p> : rewards.map((r) => <div className="reward-row" key={r.reward_code}><span>{r.icon}</span><div><b>{r.name}</b><code>{r.reward_code}</code></div><em className={r.status}>{r.status === "redeemed" ? "CANJEADO" : "PENDIENTE"}</em></div>)}</div>
+  </Card>;
 }
 
 function Result({ result, onBack }: { result: GameResult; onBack: () => void }) {

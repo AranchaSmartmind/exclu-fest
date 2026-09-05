@@ -538,3 +538,9 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Fallback para navegadores que no respetan facingMode.
 - Cámara frontal espejada y trasera sin espejo.
 - El diseño visual y hotspots de Marcos no se modifican.
+
+## 116 · Corrección de build Netlify
+- Corregidos retornos de play(): ahora siempre devuelve GameResult | null.
+- Tipos de Quiz y Boxes alineados con play().
+- Restaurado el componente Prizes que faltaba.
+- No se modifica el diseño aprobado del Fotomatón ni las pantallas congeladas.
