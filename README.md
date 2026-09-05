@@ -600,17 +600,9 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - La foto final conserva el mismo nivel de zoom visible.
 
 
-## 124 · Zoom real sin bordes negros
-- Eliminado el falso 0.5x que encogía la imagen dentro del visor.
-- Se usa zoom nativo del dispositivo cuando el navegador lo expone.
-- Si una cámara no permite menos de 1x, no se simula con bordes negros.
-- Indicador de zoom forzado por encima del vídeo.
-- El visor siempre queda completamente relleno.
-
-
-## 125 · Zoom solo en la cámara
-- El pinch dentro del visor no puede hacer zoom de página/app.
-- Frontal: 1x–3x, sin falso 0.5x.
-- Trasera: menos de 1x solo si el hardware/browser lo soporta realmente.
-- La captura conserva exactamente el zoom mostrado.
-- El indicador sigue visible dentro del visor.
+## 126 · Zoom restaurado 1x–3x
+- Recuperado el zoom 1x–3x que ya funcionaba correctamente.
+- Bloqueado el zoom de la página únicamente dentro del visor.
+- Indicador de zoom visible.
+- Eliminado el falso 0.5x que encogía la imagen.
+- No se toca el resto del diseño ni las pantallas congeladas.
