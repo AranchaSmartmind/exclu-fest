@@ -9440,3 +9440,59 @@
   filter:none!important;
   transform:none!important;
 }
+
+
+/* ============================================================
+   133 · TRANSICIÓN APROBADA BLANCO/NEGRO
+   SOLO cambia el efecto visual frontal <-> trasera.
+   ============================================================ */
+.p112-camera-shutter{
+  position:absolute!important;
+  inset:0!important;
+  z-index:30!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+  background:#000!important;
+  opacity:1!important;
+  transform:none!important;
+  transition:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+.p112-camera-shutter img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  display:block!important;
+  opacity:0!important;
+  transform:scale(1.08) rotate(-8deg)!important;
+  filter:grayscale(1) contrast(1.08)!important;
+  transition:
+    opacity .12s ease-out,
+    transform .18s cubic-bezier(.2,.8,.2,1)!important;
+}
+
+.p112-camera-shutter.closing img{
+  opacity:1!important;
+  transform:scale(1) rotate(0deg)!important;
+}
+
+.p112-camera-shutter.opening img{
+  opacity:0!important;
+  transform:scale(1.08) rotate(8deg)!important;
+  transition:
+    opacity .17s ease-in,
+    transform .17s cubic-bezier(.4,0,.8,.2)!important;
+}
+
+/* Neutraliza por completo el obturador radial de la versión anterior. */
+.p112-camera-shutter.closing,
+.p112-camera-shutter.opening{
+  opacity:1!important;
+  transform:none!important;
+}

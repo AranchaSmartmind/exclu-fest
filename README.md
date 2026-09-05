@@ -651,3 +651,10 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Sustituye el crossfade largo por un obturador breve (~220 ms).
 - No muestra 'Activa la cámara'.
 - Mantiene intacto el zoom 1x–3x y el resto del Fotomatón.
+
+
+## 133 · Transición aprobada de obturador blanco/negro
+- Se incorpora la imagen de apertura/obturador aprobada.
+- Solo aparece durante frontal ↔ trasera.
+- Entrada y salida breve para ocultar el reinicio del stream en iPhone/Safari.
+- No se modifica zoom, marcos, stickers, filtros, botones, navegación ni pantallas congeladas.

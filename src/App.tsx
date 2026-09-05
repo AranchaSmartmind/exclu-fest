@@ -1287,7 +1287,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       // Safari/iPhone necesita reiniciar físicamente el stream.
       // En vez de enseñar ese salto, lo ocultamos con un obturador muy breve.
       setCameraShutter("closing");
-      await new Promise(resolve=>setTimeout(resolve,90));
+      await new Promise(resolve=>setTimeout(resolve,120));
 
       setCameraCrossfade(true);
       await nextPaint();
@@ -1295,7 +1295,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       setSwitchFrame(null);
 
       setCameraShutter("opening");
-      await new Promise(resolve=>setTimeout(resolve,130));
+      await new Promise(resolve=>setTimeout(resolve,170));
 
       setCameraCrossfade(false);
       setCameraShutter("idle");
@@ -1480,7 +1480,11 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
       <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
-        {cameraShutter!=="idle"&&<div className={`p112-camera-shutter ${cameraShutter}`} aria-hidden="true"/>}
+        {cameraShutter!=="idle"&&
+          <div className={`p112-camera-shutter ${cameraShutter}`} aria-hidden="true">
+            <img src="/assets/camera-aperture-transition.png" alt="" />
+          </div>
+        }
         {cameraActivated&&!photoUrl&&<div className="p112-live-bg" aria-hidden="true"/>}
       <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
