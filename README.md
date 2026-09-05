@@ -590,3 +590,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Pellizco hacia dentro: alejar hasta 0.7x.
 - Solo afecta al visor de cámara, nunca a la app.
 - La captura conserva el nivel de zoom/alejamiento visible.
+
+
+## 123 · Zoom 0.5x–3x con indicador
+- Alejamiento ampliado hasta 0.5x.
+- Acercamiento máximo 3x.
+- Indicador de zoom visible dentro del visor (0.5x, 1.0x, 1.5x...).
+- El zoom afecta solo a la cámara, nunca al resto de la app.
+- La foto final conserva el mismo nivel de zoom visible.

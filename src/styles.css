@@ -9182,3 +9182,34 @@
   transform:scale(var(--camera-zoom,1))!important;
   transform-origin:center center!important;
 }
+
+
+/* ============================================================
+   123 · ZOOM 0.5x–3x + INDICADOR EN PANTALLA
+   Solo dentro del visor de la cámara.
+   ============================================================ */
+.p112-zoom-indicator{
+  position:absolute!important;
+  left:50%!important;
+  bottom:3.5%!important;
+  transform:translateX(-50%)!important;
+  z-index:95!important;
+  min-width:42px!important;
+  padding:4px 10px!important;
+  border:1px solid rgba(255,210,40,.92)!important;
+  border-radius:999px!important;
+  background:rgba(0,0,0,.72)!important;
+  color:#ffd329!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  line-height:1!important;
+  text-align:center!important;
+  pointer-events:none!important;
+  box-shadow:0 0 10px rgba(255,200,0,.35)!important;
+  backdrop-filter:blur(4px)!important;
+}
+
+/* Evita que el indicador se salga del visor en móviles pequeños. */
+.p112-preview{
+  position:absolute!important;
+}

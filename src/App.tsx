@@ -1229,7 +1229,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     const d=touchDistance(e.touches);
     if(!d)return;
     const next=pinchZoomStartRef.current*(d/pinchStartRef.current);
-    setCameraZoom(Math.min(3,Math.max(0.7,next)));
+    setCameraZoom(Math.min(3,Math.max(0.5,next)));
   }
 
   function handleCameraTouchEnd(e: React.TouchEvent<HTMLDivElement>){
@@ -1351,6 +1351,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
       <div className="p112-preview" onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
+      <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
         <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
