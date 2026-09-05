@@ -1,0 +1,22 @@
+EXCLU FEST — PAQUETE COMPLETO SIN SMS + RESPONSIVE
+
+Este paquete está preparado para COPIAR SU CONTENIDO dentro de tu carpeta existente:
+C:\Users\Usuario\Desktop\exclu-fest
+
+IMPORTANTE:
+1. NO borres la carpeta .git de tu proyecto actual.
+2. CONSERVA tu archivo .env.local actual con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.
+3. Copia el contenido de este paquete dentro de exclu-fest y acepta reemplazar archivos.
+4. En Supabase debe estar activado Authentication > Providers > Anonymous Sign-Ins.
+5. En Supabase SQL Editor ejecuta SOLO, si todavía no lo has ejecutado correctamente:
+   supabase/migrations/003_no_sms_daily_participation.sql
+   La migración 002 ya debe existir previamente.
+6. Después ejecuta desde la carpeta exclu-fest:
+   npm install
+   npm run dev
+7. Abre http://localhost:5173/
+
+La migración 003 contiene la función requerida por el frontend:
+public.register_participant(p_festival_slug text, p_phone text, p_accept_terms boolean)
+
+Si Supabase muestra un error al ejecutar 003, copia el error exacto y no vuelvas a ejecutar 002.

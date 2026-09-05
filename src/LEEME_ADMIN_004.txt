@@ -1,0 +1,32 @@
+EXCLU FEST — PANEL ADMIN (004)
+==============================
+
+1) Conserva tu archivo .env.local actual. NO lo reemplaces.
+
+2) En Supabase > SQL Editor ejecuta COMPLETO:
+   supabase/migrations/004_admin_panel.sql
+
+3) Arranca la app:
+   npm install
+   npm run dev
+
+4) Abre:
+   http://localhost:5173/admin
+
+5) La primera vez, el panel mostrará el UUID de la sesión y una sentencia SQL preparada.
+   Copia esa sentencia, ejecútala en Supabase > SQL Editor y pulsa "YA HE DADO ACCESO".
+
+6) Ya podrás:
+   - comprobar un código antes de canjearlo;
+   - marcarlo como canjeado;
+   - bloquear un segundo canje;
+   - ver y ajustar stock;
+   - ver participantes, entradas y pasaportes completos;
+   - ver últimos premios;
+   - realizar el sorteo final una sola vez.
+
+IMPORTANTE
+----------
+- Da permiso admin solo a dispositivos/navegadores de confianza.
+- Para producción usa un perfil/navegador separado para administración.
+- El panel solo muestra teléfono enmascarado porque la app no guarda el teléfono en claro.

@@ -1,0 +1,22 @@
+EXCLU · HOME 010 — LA EXCLUSIVA
+
+Cambios de esta versión:
+- Nueva Home móvil basada en el diseño final aprobado.
+- La imagen ocupa toda la pantalla.
+- Plaza + fuegos artificiales + reflejos de color en el suelo.
+- Marca La Exclusiva protagonista; se elimina EXCLU FEST de la portada móvil.
+- EXCLU aparece centrado sujetando el vaso de La Exclusiva.
+- Botones JUGAR AHORA y VER MIS PREMIOS son zonas interactivas reales.
+- Navegación inferior de la propia imagen: Inicio / Pasaporte / Arcade / Fotomatón.
+- Se oculta la barra móvil duplicada de la versión anterior mientras estás en Inicio.
+- Se ocultan en Inicio el bloque Arcade y el registro para mantener la portada limpia.
+- El registro sigue intacto y aparece cuando se entra a los juegos, sin tocar Supabase.
+- No hay migraciones SQL nuevas.
+
+Para instalar sobre tu repo actual:
+1. Descomprime este ZIP.
+2. Copia su contenido dentro de tu carpeta exclu-fest, sustituyendo los archivos existentes.
+3. NO borres tu .env.local.
+4. Ejecuta npm run dev y prueba primero en local.
+5. Después: git add . && git commit -m "Home final La Exclusiva" && git push
+6. Netlify redeplegará automáticamente.
