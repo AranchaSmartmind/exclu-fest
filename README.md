@@ -598,3 +598,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Indicador de zoom visible dentro del visor (0.5x, 1.0x, 1.5x...).
 - El zoom afecta solo a la cámara, nunca al resto de la app.
 - La foto final conserva el mismo nivel de zoom visible.
+
+
+## 124 · Zoom real sin bordes negros
+- Eliminado el falso 0.5x que encogía la imagen dentro del visor.
+- Se usa zoom nativo del dispositivo cuando el navegador lo expone.
+- Si una cámara no permite menos de 1x, no se simula con bordes negros.
+- Indicador de zoom forzado por encima del vídeo.
+- El visor siempre queda completamente relleno.

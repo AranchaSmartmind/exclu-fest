@@ -9213,3 +9213,47 @@
 .p112-preview{
   position:absolute!important;
 }
+
+
+/* ============================================================
+   124 · ZOOM REAL, SIN "FOTO ENCOGIDA"
+   - Nunca encoge el vídeo para simular 0.5x.
+   - Usa el zoom nativo del MediaStreamTrack si el móvil lo ofrece.
+   - Si el móvil no ofrece menos de 1x, el mínimo real será 1.0x.
+   - Indicador siempre encima del vídeo.
+   ============================================================ */
+.p112-zoom-indicator{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  z-index:999!important;
+  left:50%!important;
+  bottom:2.5%!important;
+  transform:translateX(-50%)!important;
+  background:rgba(0,0,0,.82)!important;
+  color:#ffd329!important;
+  border:1.5px solid #ffd329!important;
+  box-shadow:0 0 12px rgba(255,211,41,.55)!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  min-width:48px!important;
+  padding:5px 9px!important;
+}
+
+/* El visor siempre rellena toda su caja; jamás se reduce dentro de ella. */
+.p112-preview video.show{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+}
+
+/* Frontal conserva espejo, sin reducir el lienzo. */
+.photo112-stage[data-facing="user"] .p112-preview video.show{
+  transform:scaleX(-1)!important;
+}
+
+/* Trasera normal. */
+.photo112-stage[data-facing="environment"] .p112-preview video.show{
+  transform:none!important;
+}
