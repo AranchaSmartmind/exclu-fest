@@ -1,9 +1,31 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, CheckCircle2, ChevronLeft, Gift, LockKeyhole, RefreshCw, Sparkles, Ticket, Trophy, Users, XCircle, Volume2, VolumeX, Search, MousePointerClick } from "lucide-react";
+import { BarChart3, CheckCircle2, ChevronLeft, Gift, LockKeyhole, RefreshCw, Sparkles, Ticket, Trophy, Users, XCircle, Volume2, VolumeX, Search, MousePointerClick, Home, Gamepad2, Camera, CalendarDays, UserRound } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import "./styles.css";
 
+
+function PassportGlyph() {
+  return <img className="passport-glyph-image" src="/assets/passport-nav-approved.png" alt="" aria-hidden="true" />;
+}
+
+
+function PhotoBadge({ count, className = "" }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return <span className={`photo-count-badge ${className}`} aria-label={`${count} foto${count === 1 ? "" : "s"} en el fotomatón`} title={`${count} foto${count === 1 ? "" : "s"}`}>*</span>;
+}
+
+function BottomNav({ view, setView, photoCount }: { view: View; setView: (v: View) => void; photoCount: number }) {
+  const gamesActive = view === "games" || ["scratch", "fly", "find", "memory", "rings"].includes(view);
+  return <nav className="unified-bottom-nav" aria-label="Navegación La Exclusiva">
+    <button onClick={() => { sound("click"); setView("home"); }} className={view === "home" ? "active" : ""}><Home/><span>Inicio</span></button>
+    <button onClick={() => { sound("click"); setView("passport"); }} className={view === "passport" ? "active" : ""}><span className="passport-icon"><PassportGlyph/></span><span>Pasaporte</span></button>
+    <button onClick={() => { sound("click"); setView("games"); }} className={gamesActive ? "active" : ""}><Gamepad2/><span>Juegos</span></button>
+    <button onClick={() => { sound("click"); setView("photo"); }} className={view === "photo" ? "active" : ""}><span className="nav-icon-wrap"><Camera/><PhotoBadge count={photoCount}/></span><span>Fotomatón</span></button>
+  </nav>;
+}
+
 const FESTIVAL = "exclu-fest-2026";
+const ROULETTE_PREVIEW_ENABLED = true; // TEMPORAL: desactivar al cerrar las pruebas
 
 function sound(kind: "click" | "spin" | "win" | "lose" | "correct" | "wrong" | "open" = "click") {
   if (localStorage.getItem("exclu_sound") === "off") return;
@@ -33,7 +55,7 @@ function Confetti({ count = 42 }: { count?: number }) {
   return <div className="confetti" aria-hidden="true">{Array.from({length:count}).map((_,i)=><i key={i} style={{left:`${(i*37)%100}%`, animationDelay:`${(i%12)*.07}s`, animationDuration:`${1.8+(i%7)*.17}s`, ['--r' as any]:`${(i*83)%360}deg`}} />)}</div>;
 }
 
-type View = "home" | "wheel" | "quiz" | "box" | "passport" | "photo" | "prizes" | "scratch" | "fly" | "find" | "memory" | "rings";
+type View = "home" | "play" | "games" | "wheel" | "quiz" | "box" | "passport" | "photo" | "prizes" | "scratch" | "fly" | "find" | "memory" | "rings";
 type GameType = "wheel" | "quiz" | "box";
 
 type PlayedDay = { day: number; game_type: GameType; played_at: string };
@@ -90,9 +112,22 @@ function Customer() {
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<FestivalStatus>({ registered: false });
+  useEffect(() => { const h=()=>setView("play"); window.addEventListener("exclu-back-to-play", h); return()=>window.removeEventListener("exclu-back-to-play", h); }, []);
   const [result, setResult] = useState<GameResult | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem("exclu_sound") !== "off");
+  const [photoCount, setPhotoCount] = useState(() => {
+    const saved = Number(localStorage.getItem("exclu_photo_count") ?? "0");
+    return Number.isFinite(saved) && saved > 0 ? Math.floor(saved) : 0;
+  });
+
+  function registerPhotoCreated() {
+    setPhotoCount((current) => {
+      const next = current + 1;
+      localStorage.setItem("exclu_photo_count", String(next));
+      return next;
+    });
+  }
 
   const played = useMemo(() => new Set((status.played_days ?? []).map((d) => d.day)), [status.played_days]);
 
@@ -186,7 +221,7 @@ function Customer() {
     }
   }
 
-  async function play(gameType: GameType, testDay: 11 | 12 | 13, choice?: string) {
+  async function play(gameType: GameType, testDay: 11 | 12 | 13, choice?: string, presentResult = true): Promise<GameResult | null> {
     if (busy) return;
     if (!status.registered) {
       setNotice("Primero registra tu teléfono. No enviaremos ningún SMS.");
@@ -204,10 +239,13 @@ function Customer() {
         p_choice: choice ?? null,
       });
       if (error) throw error;
-      setResult((data ?? {}) as GameResult);
+      const gameResult = (data ?? {}) as GameResult;
+      if (presentResult) setResult(gameResult);
       await loadStatus();
+      return gameResult;
     } catch (error: any) {
       setNotice(friendlyError(error?.message));
+      return null;
     } finally {
       setBusy(false);
     }
@@ -218,28 +256,58 @@ function Customer() {
   }
 
   if (result) {
-    return <Result result={result} onBack={() => { setResult(null); setView("home"); }} />;
+    return <Result result={result} onBack={() => { setResult(null); setView("play"); }} />;
   }
 
   return (
-    <div className="app">
+    <div className={`app ${view === "home" ? "home-screen" : ""} ${view === "passport" ? "passport-view" : ""} ${view === "photo" ? "photo-view" : ""}`}>
       {notice && <Notice text={notice} onClose={() => setNotice(null)} />}
-      <button className="sound-toggle" onClick={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2/> : <VolumeX/>}</button>
+      {view !== "home" && view !== "play" && view !== "passport" && view !== "photo" && (
+        <button className="sound-toggle" onClick={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2/> : <VolumeX/>}</button>
+      )}
 
       {view === "home" ? (
         <>
           <DesktopPoster setView={setView} />
-          <MobileHome setView={setView} played={played} registered={status.registered} raffleEntries={status.raffle_entries ?? 0} />
+          <MobileHome
+            setView={setView}
+            played={played}
+            registered={status.registered}
+            raffleEntries={status.raffle_entries ?? 0}
+            soundOn={soundOn}
+            photoCount={photoCount}
+            onToggleSound={() => {
+              const next = !soundOn;
+              setSoundOn(next);
+              localStorage.setItem("exclu_sound", next ? "on" : "off");
+              if (next) sound("correct");
+            }}
+          />
           <ArcadeStrip setView={setView} />
         </>
+      ) : view === "play" ? (
+        <PlayHub
+          status={status}
+          played={played}
+          setView={setView}
+          soundOn={soundOn}
+          photoCount={photoCount}
+          onToggleSound={() => {
+            const next = !soundOn;
+            setSoundOn(next);
+            localStorage.setItem("exclu_sound", next ? "on" : "off");
+            if (next) sound("correct");
+          }}
+        />
       ) : (
         <div className="screen-wrap">
-          <button className="back" onClick={() => setView("home")}><ChevronLeft /> Volver</button>
-          {view === "wheel" && <Wheel busy={busy} played={played.has(11)} play={() => play("wheel", 11)} />}
+          <button className="back" onClick={() => { sound("click"); setView(["wheel", "quiz", "box"].includes(view) ? "play" : "home"); }}><ChevronLeft /> Volver</button>
+          {view === "games" && <GamesHub setView={setView} />}
+          {view === "wheel" && <Wheel busy={busy} played={played.has(11)} registered={status.registered} play={() => play("wheel", 11, undefined, false)} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
           {view === "quiz" && <Quiz busy={busy} played={played.has(12)} play={() => play("quiz", 12)} />}
           {view === "box" && <Boxes busy={busy} played={played.has(13)} play={(choice) => play("box", 13, choice)} />}
           {view === "passport" && <Passport status={status} />}
-          {view === "photo" && <Photo />}
+          {view === "photo" && <Photo onPhotoCreated={registerPhotoCreated} setView={setView} />}
           {view === "prizes" && <Prizes status={status} />}
           {view === "scratch" && <ScratchGame />}
           {view === "fly" && <ExcluFly />}
@@ -249,7 +317,7 @@ function Customer() {
         </div>
       )}
 
-      <RegisterPanel
+      {view !== "play" && <RegisterPanel
         registered={status.registered}
         phoneMasked={status.phone_masked}
         phone={phone}
@@ -258,14 +326,8 @@ function Customer() {
         setAccepted={setAccepted}
         busy={busy}
         onRegister={registerWithoutSms}
-      />
-      <nav className="mobile-bottom-nav" aria-label="Navegación EXCLU FEST">
-        <button onClick={()=>setView("home")} className={view==="home"?"active":""}>⌂<span>Inicio</span></button>
-        <button onClick={()=>setView("passport")} className={view==="passport"?"active":""}>🎟️<span>Pasaporte</span></button>
-        <button onClick={()=>setView("fly")} className={view==="fly"?"active":""}>🎮<span>Arcade</span></button>
-        <button onClick={()=>setView("photo")} className={view==="photo"?"active":""}>📸<span>Fotomatón</span></button>
-        <button onClick={()=>setView("prizes")} className={view==="prizes"?"active":""}>🎁<span>Premios</span></button>
-      </nav>
+      />}
+      <BottomNav view={view} setView={setView} photoCount={photoCount} />
     </div>
   );
 }
@@ -297,32 +359,140 @@ function DesktopPoster({ setView }: { setView: (v: View) => void }) {
   </div>;
 }
 
-function MobileHome({ setView, played, registered, raffleEntries }: { setView: (v: View) => void; played: Set<number>; registered: boolean; raffleEntries: number }) {
-  return <main className="mobile-home">
-    <section className="hero-mobile">
-      <div className="fireworks">✦ · ✧ · ✦</div>
-      <p className="brand-small">Cafetería</p>
-      <h1>La Exclusiva</h1>
-      <h2><span>EXCLU</span> FEST</h2>
-      <img src="/assets/exclu-robot-premium.png" alt="EXCLU, robot de La Exclusiva" />
-      <p className="hero-copy">Soy <strong>EXCLU</strong>, tu anfitrión especial.<br/>¿Te atreves a jugar?</p>
-      <button className="cta-orange" onClick={() => setView("wheel")}>¡JUGAR AHORA!</button>
-      <button className="outline-gold" onClick={() => setView("prizes")}><Gift size={18}/> VER MIS PREMIOS</button>
-      <div className="mini-status">{registered ? <>✓ Registrado · <Ticket size={15}/> {raffleEntries} participaciones</> : <>Sin SMS · registro gratuito</>}</div>
-    </section>
+function MobileHome({ setView, played, registered, raffleEntries, soundOn, photoCount, onToggleSound }: { setView: (v: View) => void; played: Set<number>; registered: boolean; raffleEntries: number; soundOn: boolean; photoCount: number; onToggleSound: () => void }) {
+  return <main className="mobile-home mobile-home-final" aria-label="Inicio La Exclusiva">
+    <section className="home-visual-final">
+      <img
+        className="home-visual-final__art"
+        src="/assets/home-la-exclusiva-plaza.png"
+        alt="La Exclusiva con EXCLU en ambiente festivo"
+      />
 
-    <section className="days-mobile">
-      <DayTile tone="orange" day="11 SEPTIEMBRE" title="RULETA DE LA EXCLUSIVA" icon="🎡" done={played.has(11)} onClick={() => setView("wheel")} />
-      <DayTile tone="teal" day="12 SEPTIEMBRE" title="EL RETO DEL COTO" icon="🧠" done={played.has(12)} onClick={() => setView("quiz")} />
-      <DayTile tone="purple" day="13 SEPTIEMBRE" title="LA CAJA FUERTE" icon="🎁" done={played.has(13)} onClick={() => setView("box")} />
-    </section>
+      <button className="home-hot home-hot-play" onClick={() => { sound("click"); setView("play"); }} aria-label="Jugar ahora" />
+      <button className="home-hot home-hot-prizes" onClick={() => { sound("click"); setView("prizes"); }} aria-label="Ver mis premios" />
+      <button
+        className={`home-sound-button ${soundOn ? "is-on" : "is-off"}`}
+        onClick={onToggleSound}
+        aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}
+        title={soundOn ? "Desactivar sonido" : "Activar sonido"}
+      >
+        {soundOn ? <Volume2 /> : <VolumeX />}
+      </button>
 
-    <section className="mobile-grid">
-      <button onClick={() => setView("passport")}><Ticket/><span>Mi pasaporte</span><small>{played.size}/3 sellos</small></button>
-      <button onClick={() => setView("prizes")}><Trophy/><span>Mis premios</span><small>{raffleEntries} opciones sorteo</small></button>
-      <button onClick={() => setView("photo")}><Sparkles/><span>Fotomatón EXCLU</span><small>Foto de fiestas</small></button>
+
+
+      <div className="home-live-status" aria-live="polite">
+        {registered ? <><span>✓ Participante</span><span>{played.size}/3 días</span><span>{raffleEntries} participaciones</span></> : <span>Toca «¡JUGAR AHORA!» para comenzar</span>}
+      </div>
     </section>
   </main>;
+}
+
+
+function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }: { status: FestivalStatus; played: Set<number>; setView: (v: View) => void; soundOn: boolean; photoCount: number; onToggleSound: () => void }) {
+  const madridParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type: string) => Number(madridParts.find(p => p.type === type)?.value ?? 0);
+  const year = part("year");
+  const month = part("month");
+  const dayOfMonth = part("day");
+
+  const liveFestivalDay: 11 | 12 | 13 | null = year === 2026 && month === 9 && [11, 12, 13].includes(dayOfMonth)
+    ? (dayOfMonth as 11 | 12 | 13)
+    : null;
+
+  // Modo de pruebas: solo fuerza un día si se ha definido expresamente desde desarrollo/admin.
+  const storedTestDay = Number(localStorage.getItem("exclu_test_day"));
+  const forcedTestDay: 11 | 12 | 13 | null = Boolean(status.test_mode) && [11, 12, 13].includes(storedTestDay)
+    ? (storedTestDay as 11 | 12 | 13)
+    : null;
+  const activeDay = forcedTestDay ?? liveFestivalDay;
+  const gameView: Record<11 | 12 | 13, View> = { 11: "wheel", 12: "quiz", 13: "box" };
+
+  const isBeforeFestival = year < 2026 || (year === 2026 && (month < 9 || (month === 9 && dayOfMonth < 11)));
+  const isAfterFestival = year > 2026 || (year === 2026 && (month > 9 || (month === 9 && dayOfMonth > 13)));
+
+  function dayState(day: 11 | 12 | 13): "done" | "open" | "locked" | "missed" {
+    // En producción, antes del 11 de septiembre TODO el pasaporte permanece bloqueado,
+    // aunque exista información de pruebas previa en Supabase.
+    if (forcedTestDay === null && isBeforeFestival) return "locked";
+    if (played.has(day)) return "done";
+    if (forcedTestDay === day || liveFestivalDay === day) return "open";
+    if (forcedTestDay !== null) return "locked";
+    if (isAfterFestival || (year === 2026 && month === 9 && dayOfMonth > day)) return "missed";
+    return "locked";
+  }
+
+  function launchToday() {
+    if (!activeDay && !ROULETTE_PREVIEW_ENABLED) return;
+    sound("click");
+    setView(activeDay ? gameView[activeDay] : "wheel");
+  }
+
+  const dayLabel = activeDay ? String(activeDay) : "11";
+  const lockedLabel = isAfterFestival ? "FIESTAS FINALIZADAS" : `DISPONIBLE EL ${dayLabel} SEPT`;
+
+  // Fecha visible de la tarjeta: siempre la fecha REAL de hoy en Europe/Madrid.
+  // No depende del día del festival ni del modo test.
+  const currentMonthLabel = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    month: "short",
+  }).format(new Date()).replace(".", "").toUpperCase();
+
+  return <main className="play-hub-approved play-hub-stable" aria-label="Jugar ahora · La Exclusiva">
+    <div className="play-hub-stable__top">
+      <img src="/assets/play-hub-top-user.png" alt="EXCLU · La Exclusiva" />
+      <button className="play-back-button stable-back" onClick={() => { sound("click"); setView("home"); }} aria-label="Volver a Inicio"><ChevronLeft /></button>
+      <button className={`play-sound-hotspot stable-sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2 /> : <VolumeX />}</button>
+    </div>
+
+    <section className="stable-card stable-game-card" aria-label="Juego del día">
+      <img src="/assets/game-card-user.png" alt="Ruleta · juego del día" />
+      <div className="stable-current-date" aria-label={`Hoy ${dayOfMonth} ${currentMonthLabel}`}>
+        <span>HOY</span>
+        <strong>{dayOfMonth}</strong>
+        <em>{currentMonthLabel}</em>
+      </div>
+      <button className="stable-game-button" onClick={launchToday} disabled={!activeDay && !ROULETTE_PREVIEW_ENABLED} aria-label={activeDay ? `Jugar al juego del día ${activeDay}` : lockedLabel} />
+      {!activeDay && <div className="stable-game-lock" aria-hidden="true"><LockKeyhole size={16}/><span>{lockedLabel}</span></div>}
+    </section>
+
+    <section className="stable-card stable-passport-card" aria-label="Tu Pasaporte">
+      <img src="/assets/passport-card-user.png" alt="Tu Pasaporte · 11, 12 y 13 de septiembre" />
+      <div className="stable-passport-states" aria-label="Estado de los tres días">
+        {([11,12,13] as const).map((d, index) => {
+          const state = dayState(d);
+          return <div key={d} className={`stable-passport-day stable-passport-day-${index+1} ${state}`} title={`Día ${d}: ${state}`}>
+            <span className="stable-day-symbol">
+              {state === "done" ? <CheckCircle2/> : state === "open" ? <span className="stable-day-open">{index+1}</span> : <LockKeyhole/>}
+            </span>
+            <span className="stable-day-label">DÍA {index+1}</span>
+          </div>;
+        })}
+      </div>
+      <button className="stable-passport-hot" onClick={() => { sound("click"); setView("passport"); }} aria-label="Abrir mi Pasaporte" />
+    </section>
+  </main>;
+}
+
+function GamesHub({ setView }: { setView: (v: View) => void }) {
+  const games: Array<{view: View; icon:string; title:string; text:string; featured?:boolean}> = [
+    {view:"fly", icon:"🚀", title:"EXCLU Vuela", text:"Vuela, esquiva obstáculos y supera tu récord.", featured:true},
+    {view:"scratch", icon:"🪙", title:"Rasca EXCLU", text:"Rasca la tarjeta y descubre el mensaje de EXCLU."},
+    {view:"find", icon:"🤖", title:"Encuentra a EXCLU", text:"Encuentra al robot escondido antes de que se acabe el tiempo."},
+    {view:"memory", icon:"🧠", title:"Memoria EXCLU", text:"Encuentra todas las parejas en el menor número de movimientos."},
+    {view:"rings", icon:"⭕", title:"Lanza Aros", text:"Afina la puntería y consigue la máxima puntuación."},
+  ];
+  return <section className="games-hub">
+    <div className="play-brand compact"><img src="/assets/logo-la-exclusiva-approved.png" alt="La Exclusiva Cafetería" /></div>
+    <div className="games-title"><Gamepad2/><div><span>JUEGOS</span><h1>EXCLU GAMES</h1><p>Diviértete y supera tus propios récords.</p></div></div>
+    <div className="games-grid">{games.map(g=><button key={g.view} className={g.featured?"featured":""} onClick={()=>{sound("click");setView(g.view)}}><span className="games-icon">{g.icon}</span><div><b>{g.title}</b><small>{g.text}</small></div><strong>›</strong></button>)}</div>
+    <p className="games-note">Los juegos son de habilidad y diversión. Los premios reales están ligados a la participación diaria.</p>
+  </section>;
 }
 
 function DayTile({ tone, day, title, icon, done, onClick }: any) {
@@ -336,7 +506,7 @@ function Hot({ x, y, w, h, onClick, label }: any) {
 
 function ArcadeStrip({ setView }: { setView: (v: View)=>void }) {
   return <section className="arcade-strip arcade-009">
-    <div><span>EXCLU ARCADE</span><h2>Juega, colecciona y presume de récord</h2><p>Los juegos Arcade son de habilidad y diversión. Los premios reales siguen ligados a la participación diaria de EXCLU FEST.</p></div>
+    <div><span>EXCLU JUEGOS</span><h2>Juega, colecciona y presume de récord</h2><p>Los juegos son de habilidad y diversión. Los premios reales siguen ligados a la participación diaria de EXCLU FEST.</p></div>
     <div className="arcade-buttons">
       <button onClick={()=>{sound("click");setView("scratch")}}>🪙 Rasca EXCLU</button>
       <button className="featured" onClick={()=>{sound("click");setView("fly")}}>🚀 EXCLU Vuela</button>
@@ -350,7 +520,7 @@ function ArcadeStrip({ setView }: { setView: (v: View)=>void }) {
 function ScratchGame(){
   const [pct,setPct]=useState(0); const [done,setDone]=useState(false);
   function scratch(){ if(done)return; const next=Math.min(100,pct+14+Math.floor(Math.random()*13)); setPct(next); sound("click"); if(next>=72){setDone(true);sound("win");}}
-  return <Card tone="orange" tag="EXCLU ARCADE" title="RASCA EXCLU" sub="Rasca la tarjeta y descubre el mensaje de fiesta"><div className="scratch-card" onPointerMove={(e)=>{if(e.buttons===1)scratch()}} onClick={scratch}><div className="scratch-secret">🤖<b>¡EXCLU TE DESEA<br/>FELICES FIESTAS!</b><small>Has encontrado una estrella EXCLU ⭐</small></div><div className="scratch-cover" style={{clipPath:`inset(0 ${pct}% 0 0)`}}>✦ RASCA AQUÍ ✦<span>{pct}%</span></div></div>{done&&<div className="arcade-success">✨ ¡Descubierto! Coleccionable desbloqueado: Estrella de Fiesta.</div>}</Card>
+  return <Card tone="orange" tag="EXCLU JUEGOS" title="RASCA EXCLU" sub="Rasca la tarjeta y descubre el mensaje de fiesta"><div className="scratch-card" onPointerMove={(e)=>{if(e.buttons===1)scratch()}} onClick={scratch}><div className="scratch-secret">🤖<b>¡EXCLU TE DESEA<br/>FELICES FIESTAS!</b><small>Has encontrado una estrella EXCLU ⭐</small></div><div className="scratch-cover" style={{clipPath:`inset(0 ${pct}% 0 0)`}}>✦ RASCA AQUÍ ✦<span>{pct}%</span></div></div>{done&&<div className="arcade-success">✨ ¡Descubierto! Coleccionable desbloqueado: Estrella de Fiesta.</div>}</Card>
 }
 
 function ExcluFly(){
@@ -386,7 +556,7 @@ function ExcluFly(){
       rafRef.current=requestAnimationFrame(loop)};
     rafRef.current=requestAnimationFrame(loop);return()=>{if(rafRef.current)cancelAnimationFrame(rafRef.current)}
   },[running,best]);
-  return <Card tone="purple" tag="EXCLU ARCADE · JUEGO ESTRELLA" title="EXCLU VUELA" sub="Toca la pantalla para volar, esquiva obstáculos y recoge estrellas hasta llegar al Cofre EXCLU">
+  return <Card tone="purple" tag="EXCLU JUEGOS · JUEGO ESTRELLA" title="EXCLU VUELA" sub="Toca la pantalla para volar, esquiva obstáculos y recoge estrellas hasta llegar al Cofre EXCLU">
     <div className="fly-hud"><span>🚀 {distance} m</span><span>⭐ {collected}</span><span>🏆 Récord {best}</span></div>
     <div className="fly-stage" onPointerDown={flap}><canvas ref={canvasRef} width={720} height={460}/>{!running&&!finished&&<div className="fly-overlay"><img src="/assets/exclu-robot-premium.png"/><h2>¿LISTO PARA VOLAR?</h2><p>Llega a 1.000 m y abre el Cofre EXCLU.</p><button onClick={(e)=>{e.stopPropagation();start()}}>JUGAR AHORA</button></div>}{finished&&<div className="fly-overlay result-mini"><h2>{distance>=1000?"¡META CONSEGUIDA!":"¡CASI!"}</h2><p>{chest||`Has llegado a ${distance} m y recogido ${collected} estrellas.`}</p><button onClick={(e)=>{e.stopPropagation();start()}}>VOLVER A INTENTAR</button></div>}</div>
     <div className="fly-progress"><i style={{width:`${Math.min(100,distance/10)}%`}}/><span>🏁 1.000 m</span></div>
@@ -409,7 +579,7 @@ function MemoryExclu(){
   function restart(){setDeck(shuffle([...symbols,...symbols]));setOpen([]);setMatched([]);setMoves(0)}
   function flip(i:number){if(open.length===2||open.includes(i)||matched.includes(i))return;const next=[...open,i];setOpen(next);sound("click");if(next.length===2){setMoves(m=>m+1);if(deck[next[0]]===deck[next[1]]){setMatched(m=>[...m,...next]);setOpen([]);sound("correct")}else setTimeout(()=>{setOpen([]);sound("wrong")},650)}}
   const done=matched.length===deck.length;
-  return <Card tone="teal" tag="EXCLU ARCADE" title="MEMORIA EXCLU" sub="Encuentra las parejas con el menor número de movimientos"><div className="memory-top"><b>{moves} movimientos</b>{done&&<strong>✨ ¡COLECCIÓN COMPLETA!</strong>}</div><div className="memory-grid">{deck.map((x,i)=><button key={i} onClick={()=>flip(i)} className={open.includes(i)||matched.includes(i)?"open":""}>{open.includes(i)||matched.includes(i)?x:"✦"}</button>)}</div><button className="teal" onClick={restart}>NUEVA PARTIDA</button></Card>
+  return <Card tone="teal" tag="EXCLU JUEGOS" title="MEMORIA EXCLU" sub="Encuentra las parejas con el menor número de movimientos"><div className="memory-top"><b>{moves} movimientos</b>{done&&<strong>✨ ¡COLECCIÓN COMPLETA!</strong>}</div><div className="memory-grid">{deck.map((x,i)=><button key={i} onClick={()=>flip(i)} className={open.includes(i)||matched.includes(i)?"open":""}>{open.includes(i)||matched.includes(i)?x:"✦"}</button>)}</div><button className="teal" onClick={restart}>NUEVA PARTIDA</button></Card>
 }
 function shuffle<T>(a:T[]){return a.sort(()=>Math.random()-.5)}
 
@@ -417,13 +587,13 @@ function RingToss(){
   const [pos,setPos]=useState(50);const [dir,setDir]=useState(1);const [score,setScore]=useState(0);const [throws,setThrows]=useState(5);const [flash,setFlash]=useState("");
   useEffect(()=>{if(throws<=0)return;const id=setInterval(()=>setPos(p=>{let n=p+dir*3;if(n>90){n=90;setDir(-1)}if(n<10){n=10;setDir(1)}return n}),45);return()=>clearInterval(id)},[dir,throws]);
   function toss(){if(throws<=0)return;const hit=Math.abs(pos-50)<13;setThrows(t=>t-1);if(hit){setScore(s=>s+1);setFlash("¡ARO DENTRO! +1");sound("correct")}else{setFlash("¡CERCA!");sound("wrong")}setTimeout(()=>setFlash(""),700)}
-  return <Card tone="orange" tag="EXCLU ARCADE" title="LANZA AROS" sub="Calcula el momento y encesta el aro en la botella"><div className="rings-stage"><div className="rings-bottle" style={{left:`${pos}%`}}>🍾</div><div className="rings-target">◎</div>{flash&&<strong>{flash}</strong>}</div><div className="rings-score"><span>⭕ Aros: {throws}</span><span>🏆 Aciertos: {score}</span></div><button className="teal" onClick={toss} disabled={throws<=0}>{throws>0?"LANZAR ARO":"PARTIDA TERMINADA"}</button>{throws<=0&&<button className="outline-gold" onClick={()=>{setThrows(5);setScore(0)}}>JUGAR OTRA VEZ</button>}</Card>
+  return <Card tone="orange" tag="EXCLU JUEGOS" title="LANZA AROS" sub="Calcula el momento y encesta el aro en la botella"><div className="rings-stage"><div className="rings-bottle" style={{left:`${pos}%`}}>🍾</div><div className="rings-target">◎</div>{flash&&<strong>{flash}</strong>}</div><div className="rings-score"><span>⭕ Aros: {throws}</span><span>🏆 Aciertos: {score}</span></div><button className="teal" onClick={toss} disabled={throws<=0}>{throws>0?"LANZAR ARO":"PARTIDA TERMINADA"}</button>{throws<=0&&<button className="outline-gold" onClick={()=>{setThrows(5);setScore(0)}}>JUGAR OTRA VEZ</button>}</Card>
 }
 
 function FindExclu(){
  const [round,setRound]=useState(0); const [found,setFound]=useState(false); const pos=[12,68,35,80,48][round%5];
  function hit(){setFound(true);sound("win");setTimeout(()=>{setFound(false);setRound(r=>r+1)},1100)}
- return <Card tone="orange" tag="EXCLU ARCADE" title="¿DÓNDE ESTÁ EXCLU?" sub="Encuentra al robot escondido entre la fiesta"><div className="find-stage">{Array.from({length:18}).map((_,i)=><span key={i} className="crowd">{["🥳","🎉","🍻","🎺","🕺","💃"][i%6]}</span>)}<button className={`hidden-exclu ${found?"found":""}`} onClick={hit} style={{left:`${pos}%`,top:`${22+(round*17)%55}%`}}><img src="/assets/exclu-robot-premium.png" alt="Encuentra a EXCLU"/></button>{found&&<strong>¡ENCONTRADO! 🤖✨</strong>}</div><p className="game-hint"><Search size={16}/> Ronda {round+1} · toca al robot cuando lo veas</p></Card>
+ return <Card tone="orange" tag="EXCLU JUEGOS" title="¿DÓNDE ESTÁ EXCLU?" sub="Encuentra al robot escondido entre la fiesta"><div className="find-stage">{Array.from({length:18}).map((_,i)=><span key={i} className="crowd">{["🥳","🎉","🍻","🎺","🕺","💃"][i%6]}</span>)}<button className={`hidden-exclu ${found?"found":""}`} onClick={hit} style={{left:`${pos}%`,top:`${22+(round*17)%55}%`}}><img src="/assets/exclu-robot-premium.png" alt="Encuentra a EXCLU"/></button>{found&&<strong>¡ENCONTRADO! 🤖✨</strong>}</div><p className="game-hint"><Search size={16}/> Ronda {round+1} · toca al robot cuando lo veas</p></Card>
 }
 
 function RegisterPanel({ registered, phoneMasked, phone, setPhone, accepted, setAccepted, busy, onRegister }: any) {
@@ -441,61 +611,234 @@ function RegisterPanel({ registered, phoneMasked, phone, setPhone, accepted, set
   </section>;
 }
 
-function Wheel({ busy, played, play }: { busy: boolean; played: boolean; play: () => Promise<void> }) {
-  const wheelRef = useRef<HTMLDivElement | null>(null);
-  const [phase, setPhase] = useState<"idle" | "spin" | "brake" | "saving">("idle");
+function makePreviewRewardCode(day = 11) {
+  const months = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+  const datePart = `${String(day).padStart(2,"0")}${months[8]}`;
+  const storageKey = "exclu_preview_reward_codes";
+  let used: string[] = [];
+  try { used = JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch {}
+  let code = "";
+  do {
+    const randomNumber = String(Math.floor(100000 + Math.random() * 900000));
+    code = `EXCLU-${datePart}-${randomNumber}`;
+  } while (used.includes(code));
+  used.push(code);
+  try { localStorage.setItem(storageKey, JSON.stringify(used.slice(-250))); } catch {}
+  return code;
+}
+
+function RoulettePrizePopup({ result, onClose }: { result: GameResult; onClose: () => void }) {
+  return (
+    <div className="roulette-prize-overlay roulette-prize-overlay--v084" role="dialog" aria-modal="true" aria-labelledby="roulette-prize-title">
+      <div className="roulette-prize-v084">
+        <img
+          className="roulette-prize-v084__art"
+          src="/assets/roulette-popup-approved-v084.png"
+          alt=""
+          aria-hidden="true"
+        />
+
+        <button
+          className="roulette-prize-v084__close"
+          onClick={onClose}
+          aria-label="Cerrar premio"
+        />
+
+        <div className="roulette-prize-v084__prize" aria-live="polite">
+          <span className="roulette-prize-v084__icon">{result.prize_icon || "🎁"}</span>
+          <div className="roulette-prize-v084__copy">
+            <strong id="roulette-prize-title">{result.prize_name || "PREMIO"}</strong>
+            <small>{result.prize_description || "Premio de La Exclusiva"}</small>
+          </div>
+        </div>
+
+        <code className="roulette-prize-v084__code">{result.reward_code}</code>
+
+        <button
+          className="roulette-prize-v084__ok"
+          onClick={onClose}
+          aria-label="Cerrar y continuar"
+        />
+      </div>
+    </div>
+  );
+}
+
+function Wheel({ busy, played, registered, play, soundOn, onToggleSound }: { busy: boolean; played: boolean; registered: boolean; play: () => Promise<GameResult | null>; soundOn: boolean; onToggleSound: () => void }) {
+  const wheelRef = useRef<HTMLImageElement | null>(null);
+  const [phase, setPhase] = useState<"idle" | "spin" | "saving">("idle");
+  const [prizePopup, setPrizePopup] = useState<GameResult | null>(null);
+  const [spinMessage, setSpinMessage] = useState("");
   const angleRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const tickIndexRef = useRef(-1);
 
-  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    try { audioCtxRef.current?.close(); } catch {}
+  }, []);
 
-  function animate(from:number,to:number,duration:number,ease:(t:number)=>number){
+  function rouletteTick(strength = 1) {
+    if (!soundOn || localStorage.getItem("exclu_sound") === "off") return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = audioCtxRef.current && audioCtxRef.current.state !== "closed" ? audioCtxRef.current : new AudioCtx();
+      audioCtxRef.current = ctx;
+      if (ctx.state === "suspended") ctx.resume();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(900 + Math.random()*220, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.045 * strength, now + 0.003);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.032);
+    } catch {}
+  }
+
+  function prizeFanfare() {
+    if (!soundOn || localStorage.getItem("exclu_sound") === "off") return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioCtx();
+      const master = ctx.createGain();
+      master.gain.value = 0.14;
+      master.connect(ctx.destination);
+      const now = ctx.currentTime;
+      const melody = [523.25,659.25,783.99,1046.5,783.99,1046.5];
+      melody.forEach((freq,i)=>{
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = i < 4 ? "sine" : "triangle";
+        osc.frequency.setValueAtTime(freq, now + i*0.105);
+        g.gain.setValueAtTime(0.0001, now + i*0.105);
+        g.gain.exponentialRampToValueAtTime(0.16, now + i*0.105 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.105 + 0.19);
+        osc.connect(g); g.connect(master); osc.start(now + i*0.105); osc.stop(now + i*0.105 + 0.22);
+      });
+      setTimeout(()=>{ try { ctx.close(); } catch {} }, 1600);
+    } catch {}
+  }
+
+  function playCelebration() {
+    if (!soundOn || localStorage.getItem("exclu_sound") === "off") return;
+    try {
+      const audio = new Audio("/assets/celebration-v2.wav");
+      audio.volume = 0.9;
+      audio.currentTime = 0;
+      void audio.play().catch(() => {});
+    } catch {}
+  }
+
+  function animate(to:number,duration:number){
+    const from=angleRef.current;
     return new Promise<void>((resolve)=>{
-      const start=performance.now();
+      const started=performance.now();
       const frame=(now:number)=>{
-        const t=Math.min(1,(now-start)/duration);
-        const a=from+(to-from)*ease(t);
+        const t=Math.min(1,(now-started)/duration);
+        const eased=1-Math.pow(1-t,4);
+        const a=from+(to-from)*eased;
         angleRef.current=a;
         if(wheelRef.current) wheelRef.current.style.transform=`rotate(${a}deg)`;
+        const tickIndex = Math.floor(a / 30);
+        if (tickIndex !== tickIndexRef.current) {
+          tickIndexRef.current = tickIndex;
+          rouletteTick(Math.max(.35, 1 - t*.45));
+        }
         if(t<1) rafRef.current=requestAnimationFrame(frame); else resolve();
       };
       rafRef.current=requestAnimationFrame(frame);
     });
   }
 
-  async function go() {
-    if (phase !== "idle" || busy || played) return;
-    sound("spin");
-    if (navigator.vibrate) navigator.vibrate([25,30,25]);
+  async function go(){
+    if(phase!=="idle" || busy) return;
+    if(!registered){
+      document.getElementById("register")?.scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
+    if(played && !ROULETTE_PREVIEW_ENABLED) return;
+    setPrizePopup(null);
+    setSpinMessage("");
+    rouletteTick(1);
+    if(navigator.vibrate) navigator.vibrate([20,25,20]);
     setPhase("spin");
-    const start=angleRef.current;
-    // Tramo 1: velocidad constante, dibujado con requestAnimationFrame para evitar tirones.
-    await animate(start,start+2520,3000,t=>t);
-    setPhase("brake");
-    // Tramo 2: frenado largo y suave, sin cambiar de animación CSS a mitad de giro.
-    await animate(start+2520,start+2520+1110,2500,t=>1-Math.pow(1-t,4));
+
+    // El puntero permanece fijo. Solo gira la rueda y termina con el centro
+    // de un sector exactamente bajo la flecha superior.
+    const sectorAngle = 30;
+    const targetIndex = Math.floor(Math.random() * 12);
+    const currentNormalized = ((angleRef.current % 360) + 360) % 360;
+    const desiredNormalized = (360 - targetIndex * sectorAngle) % 360;
+    const correction = (desiredNormalized - currentNormalized + 360) % 360;
+    const targetAngle = angleRef.current + (8 * 360) + correction;
+
+    await animate(targetAngle,5200);
     setPhase("saving");
-    try { await play(); }
-    finally { setPhase("idle"); }
+    try {
+      let gameResult: GameResult | null;
+      if (ROULETTE_PREVIEW_ENABLED) {
+        // Premios TEMPORALES de prueba vinculados al sector real donde se detiene la ruleta.
+        // Se sustituirán por el catálogo definitivo de Supabase cuando nos pases los premios finales.
+        // Orden REAL de los 12 sectores de la imagen aprobada, empezando arriba
+        // (bajo el puntero) y avanzando en sentido horario.
+        const previewPrizes = [
+          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" }, // 12:00
+          { prize_name: "PREMIO SORPRESA", prize_description: "Premio identificado con ticket", prize_icon: "🎟️" },
+          { prize_name: "PREMIO ESPECIAL", prize_description: "Premio identificado con estrella", prize_icon: "⭐" },
+          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" },
+          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
+          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" },
+          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
+          { prize_name: "PREMIO ESPECIAL", prize_description: "Premio identificado con estrella", prize_icon: "⭐" },
+          { prize_name: "PREMIO SORPRESA", prize_description: "Premio identificado con ticket", prize_icon: "🎟️" },
+          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
+          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" },
+          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
+        ];
+        // El giro se programa para dejar exactamente targetIndex bajo la flecha fija.
+        // Usamos ese mismo índice como fuente del premio para evitar cualquier desfase visual.
+        const landedIndex = targetIndex;
+        const previewPrize = previewPrizes[landedIndex] ?? previewPrizes[0];
+        gameResult = {
+          won: true,
+          day: 11,
+          ...previewPrize,
+          reward_code: makePreviewRewardCode(11),
+          message: "Premio de prueba",
+        };
+      } else {
+        gameResult = await play();
+      }
+
+      if (gameResult?.won && gameResult.reward_code) {
+        playCelebration();
+        if(navigator.vibrate) navigator.vibrate([35,35,70,40,120]);
+        setPrizePopup(gameResult);
+      } else if (gameResult) {
+        sound("correct");
+        setSpinMessage(gameResult.message || "Tu participación está registrada para el sorteo final.");
+      }
+    } finally { setPhase("idle"); }
   }
 
-  return <Card tone="orange" tag="DÍA 11 SEPTIEMBRE" title="RULETA EXCLU" sub={played ? "Ya has completado la ruleta de este día" : "Un solo giro diario. La ruleta gira, frena y después revela tu resultado."}>
-    <div className="wheel-stage deluxe-wheel-stage wheel009-stage">
-      <div className={`wheel-pointer ${phase !== "idle" ? "is-spinning" : ""}`}>▼</div>
-      <div ref={wheelRef} className="wheel deluxe-wheel wheel009">
-        <div className="slice s1">CAFÉ<br/>GRATIS</div>
-        <div className="slice s2">PINCHO /<br/>BOLLERÍA</div>
-        <div className="slice s3">% DTO.<br/>BEBIDAS</div>
-        <div className="slice s4">VERMUT<br/>GRATIS</div>
-        <div className="slice s5">NADA<br/>ESTA VEZ</div>
-        <div className="slice s6">SORPRESA<br/>EXCLU</div>
-        <i>EXCLU</i>
-      </div>
-      {phase !== "idle" && <div className="spin-energy" aria-hidden="true"><span/><span/><span/></div>}
-    </div>
-    <div className="game-hint">{phase === "spin" ? "⚡ ¡GIRANDO!" : phase === "brake" ? "✨ La ruleta está frenando…" : phase === "saving" ? "🎁 EXCLU está preparando tu resultado…" : "Toca el botón y disfruta del giro completo"}</div>
-    <button className="teal wheel-cta" onClick={go} disabled={phase !== "idle" || busy || played}>{played ? "✓ COMPLETADO" : phase !== "idle" || busy ? "¡GIRANDO!" : "¡GIRAR LA RULETA!"}</button>
-  </Card>;
+  const label = !registered ? "REGÍSTRATE PARA JUGAR" : (played && !ROULETTE_PREVIEW_ENABLED) ? "✓ COMPLETADO" : phase!=="idle" || busy ? "¡GIRANDO!" : "¡JUGAR AHORA!";
+
+  return <section className="roulette-approved" aria-label="Ruleta La Exclusiva">
+    <img className="roulette-approved__art" src="/assets/roulette-approved-screen.png" alt="Ruleta La Exclusiva" />
+<img ref={wheelRef} className={`roulette-approved__wheel ${phase!=="idle"?"is-spinning":""}`} src="/assets/roulette-approved-wheel.png" alt="" aria-hidden="true" />
+<span className="roulette-approved__pointer" aria-hidden="true"><i /></span>
+    <button className="roulette-approved__back" onClick={()=>{sound("click"); window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver" />
+    <button className={`roulette-approved__sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"} title={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2 /> : <VolumeX />}</button>
+    <button className="roulette-approved__cta" onClick={go} disabled={phase!=="idle" || busy || (played && !ROULETTE_PREVIEW_ENABLED)} aria-label={label}><span>{label}</span></button>
+    {!registered && <div className="roulette-approved__status">Primero regístrate para poder girar</div>}
+    {played && !ROULETTE_PREVIEW_ENABLED && <div className="roulette-approved__status">Ya has realizado tu giro de hoy</div>}
+    {spinMessage && !prizePopup && <div className="roulette-approved__message">{spinMessage}</div>}
+    {prizePopup && <RoulettePrizePopup result={prizePopup} onClose={()=>{sound("click");setPrizePopup(null);}} />}
+  </section>;
 }
 
 const questions = [
@@ -547,229 +890,327 @@ function Boxes({ busy, played, play }: { busy: boolean; played: boolean; play: (
 }
 
 function Passport({ status }: { status: FestivalStatus }) {
-  const days = new Set((status.played_days ?? []).map((d) => d.day));
-  return <Card tone="orange" tag="PASAPORTE" title="COMPLETA LOS 3 DÍAS" sub="Cada día suma una participación; completar los tres añade 2 extra">
-    <div className="paper"><div>{[11,12,13].map((d) => <b className={days.has(d) ? "stamp-done" : ""} key={d}>{d}<small>SEPT</small><em>{days.has(d) ? "✓" : "○"}</em></b>)}</div><h2>{status.passport_complete ? "¡PASAPORTE COMPLETO!" : `${days.size}/3 SELLOS`}</h2><p>{status.passport_complete ? "Has conseguido 2 participaciones extra para el sorteo final." : "Vuelve cada día para completar EXCLU FEST."}</p><div className="raffle-count"><Ticket/> {status.raffle_entries ?? 0} participaciones en el sorteo</div></div>
-  </Card>;
-}
+  const rawPlayedDays = new Set((status.played_days ?? []).map((d) => Number(d.day)));
 
-function Photo() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraOn, setCameraOn] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [message, setMessage] = useState("Activa la cámara, elige tu marco y haz una foto de fiesta.");
-  const [frame, setFrame] = useState<"gold" | "neon" | "fiesta" | "polaroid">("gold");
-  const [filter, setFilter] = useState<"normal" | "warm" | "party" | "mono">("normal");
-  const [sticker, setSticker] = useState<"none" | "crown" | "glasses" | "heart" | "confetti">("none");
-  const [flash, setFlash] = useState(false);
+  const madridParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(new Date());
 
-  useEffect(() => () => stopCamera(), []);
+  const part = (type: "year" | "month" | "day") =>
+    Number(madridParts.find((p) => p.type === type)?.value ?? 0);
 
-  async function startCamera() {
-    setMessage("Pidiendo permiso para usar la cámara…");
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no permite usar la cámara.");
-      stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1280 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      setCameraOn(true);
-      setPhotoUrl(null);
-      setMessage("¡Sonríe! EXCLU está listo para la foto.");
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-      });
-      sound("open");
-    } catch (error: any) {
-      setCameraOn(false);
-      setMessage(error?.message || "No se ha podido acceder a la cámara. Revisa los permisos del navegador.");
+  const year = part("year");
+  const month = part("month");
+  const today = part("day");
+
+  const storedTestDay = Number(localStorage.getItem("exclu_test_day"));
+  const forcedTestDay: 11 | 12 | 13 | null =
+    Boolean(status.test_mode) && [11, 12, 13].includes(storedTestDay)
+      ? (storedTestDay as 11 | 12 | 13)
+      : null;
+
+  const beforeFestival =
+    year < 2026 || (year === 2026 && (month < 9 || (month === 9 && today < 11)));
+
+  const afterFestival =
+    year > 2026 || (year === 2026 && (month > 9 || (month === 9 && today > 13)));
+
+  type PassportDayState = "done" | "open" | "locked" | "missed";
+
+  function isPlayedDayValidForDisplay(day: 11 | 12 | 13) {
+    if (forcedTestDay !== null) {
+      return rawPlayedDays.has(day) && day === forcedTestDay;
     }
+    if (beforeFestival) return false;
+    if (afterFestival) return rawPlayedDays.has(day);
+    if (year === 2026 && month === 9) {
+      return rawPlayedDays.has(day) && day <= today;
+    }
+    return false;
   }
 
-  function stopCamera() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
+  function getDayState(day: 11 | 12 | 13): PassportDayState {
+    if (forcedTestDay !== null) {
+      if (isPlayedDayValidForDisplay(day)) return "done";
+      return forcedTestDay === day ? "open" : "locked";
+    }
+
+    if (beforeFestival) return "locked";
+    if (isPlayedDayValidForDisplay(day)) return "done";
+
+    if (year === 2026 && month === 9 && today === day) {
+      return "open";
+    }
+
+    if (afterFestival || (year === 2026 && month === 9 && today > day)) {
+      return "missed";
+    }
+
+    return "locked";
+  }
+
+  const dayConfig = [
+    { day: 11 as const, dayLabel: "DÍA 1", dateLabel: "11 SEPT" },
+    { day: 12 as const, dayLabel: "DÍA 2", dateLabel: "12 SEPT" },
+    { day: 13 as const, dayLabel: "DÍA 3", dateLabel: "13 SEPT" },
+  ];
+
+  const visibleCompleted = dayConfig.filter(({ day }) => isPlayedDayValidForDisplay(day)).length;
+  const passportComplete = visibleCompleted === 3;
+  const raffleEntries = beforeFestival && forcedTestDay === null ? 0 : (status.raffle_entries ?? 0);
+
+  return (
+    <main className="passport-screen" aria-label="Pasaporte EXCLU">
+      <section className="passport-book">
+        <header className="passport-book__brand">
+          <div className="passport-book__brand-mark">
+            <img src="/assets/logo-la-exclusiva-real-icon.png" alt="" aria-hidden="true" />
+          </div>
+          <div className="passport-book__brand-text">
+            <strong>La Exclusiva</strong>
+            <span>CAFETERÍA</span>
+          </div>
+        </header>
+
+        <div className="passport-book__rule" />
+
+        <div className="passport-book__hero">
+          <div>
+            <span className="passport-book__eyebrow">PASAPORTE EXCLU</span>
+            <h1>TU PASAPORTE</h1>
+            <p>
+              Completa los tres días de fiesta y consigue
+              <strong> +2 participaciones extra</strong> para el sorteo final.
+            </p>
+          </div>
+
+          <div className="passport-book__cover" aria-hidden="true">
+            <div className="passport-book__cover-logo">
+              <PassportGlyph />
+            </div>
+            <strong>EXCLU</strong>
+            <span>PASAPORTE</span>
+          </div>
+        </div>
+
+        <div className="passport-book__divider" />
+
+        <div className="passport-book__days">
+          {dayConfig.map(({ day, dayLabel, dateLabel }) => {
+            const state = getDayState(day);
+            const isDone = state === "done";
+            const isOpen = state === "open";
+
+            return (
+              <article
+                key={day}
+                className={`passport-book__day is-${state}`}
+                aria-label={`${dayLabel} ${dateLabel}`}
+              >
+                <div className="passport-book__stamp">
+                  {isDone ? (
+                    <CheckCircle2 size={31} strokeWidth={2.6} />
+                  ) : (
+                    <LockKeyhole size={25} strokeWidth={2.1} />
+                  )}
+                </div>
+                <strong>{dayLabel}</strong>
+                <span>{dateLabel}</span>
+                <small>
+                  {isDone
+                    ? "COMPLETADO"
+                    : isOpen
+                      ? (status.registered ? "DISPONIBLE HOY" : "REGÍSTRATE")
+                      : state === "missed"
+                        ? "FINALIZADO"
+                        : "BLOQUEADO"}
+                </small>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className={`passport-book__reward ${passportComplete ? "is-complete" : ""}`}>
+          <Gift size={26} />
+          <div>
+            <strong>{passportComplete ? "¡PASAPORTE COMPLETO!" : "COMPLETA LOS 3 DÍAS"}</strong>
+            <span>
+              {passportComplete
+                ? "Tus +2 participaciones extra ya están añadidas."
+                : "+2 PARTICIPACIONES EXTRA PARA EL SORTEO FINAL"}
+            </span>
+          </div>
+        </div>
+
+        <div className="passport-book__footer">
+          <div>
+            <span>SELLOS</span>
+            <strong>{visibleCompleted}/3</strong>
+          </div>
+          <div className="passport-book__footer-separator" />
+          <div>
+            <span>PARTICIPACIONES</span>
+            <strong>{raffleEntries}</strong>
+          </div>
+        </div>
+
+        {forcedTestDay !== null && (
+          <div className="passport-book__test">
+            MODO PRUEBAS · DÍA {forcedTestDay} HABILITADO
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setView: (v: View) => void }){
+  const videoRef=useRef<HTMLVideoElement|null>(null);
+  const canvasRef=useRef<HTMLCanvasElement|null>(null);
+  const streamRef=useRef<MediaStream|null>(null);
+  const [cameraOn,setCameraOn]=useState(false);
+  const [photoUrl,setPhotoUrl]=useState<string|null>(null);
+  const [facing,setFacing]=useState<"user"|"environment">("user");
+  const [flash,setFlash]=useState(false);
+  const [frame,setFrame]=useState("classic");
+  const [sticker,setSticker]=useState("exclu");
+  const [filter,setFilter]=useState("normal");
+
+  const frameIds=["classic","party","selfie","cheers","good","team","asturias"];
+  const stickerIds=["exclu","salud","beer","hearts","crown","glasses","confetti","heart","coffee","exclusive","selfie","fiestas"];
+  const filterIds=["normal","warm","bw","party","vintage","neon"];
+  const filterCss:Record<string,string>={
+    normal:"none",warm:"sepia(.28) saturate(1.2)",bw:"grayscale(1)",
+    party:"saturate(1.6) hue-rotate(12deg)",vintage:"sepia(.6) saturate(.8)",
+    neon:"saturate(1.9) contrast(1.2) hue-rotate(-18deg)"
+  };
+
+  async function stopCamera(){
+    if(streamRef.current){
+      streamRef.current.getTracks().forEach(track=>track.stop());
+      streamRef.current=null;
+    }
+    if(videoRef.current){
+      videoRef.current.pause();
+      videoRef.current.srcObject=null;
+    }
     setCameraOn(false);
   }
 
-  async function takePhoto() {
-    if (!videoRef.current || !cameraOn || countdown !== null) return;
-    for (const n of [3, 2, 1]) {
-      setCountdown(n);
-      sound("click");
-      if (navigator.vibrate) navigator.vibrate(35);
-      await new Promise((r) => setTimeout(r, 650));
-    }
-    setCountdown(0);
-    setFlash(true);
-    sound("win");
-    if (navigator.vibrate) navigator.vibrate([50, 35, 80]);
-    drawPhoto();
-    await new Promise((r) => setTimeout(r, 180));
-    setFlash(false);
-    setCountdown(null);
-    stopCamera();
-    setMessage("¡Fotaza! Puedes guardarla, compartirla o repetirla.");
-  }
+  async function startCamera(next: "user" | "environment" = facing){
+    try{
+      await stopCamera();
 
-  function drawPhoto() {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    const size = 1080;
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      const constraints: MediaStreamConstraints = {
+        audio:false,
+        video:{
+          facingMode:{ideal:next},
+          width:{ideal:1280},
+          height:{ideal:1280},
+          aspectRatio:{ideal:1}
+        }
+      };
 
-    const vw = video.videoWidth || 720;
-    const vh = video.videoHeight || 720;
-    const source = Math.min(vw, vh);
-    const sx = (vw - source) / 2;
-    const sy = (vh - source) / 2;
-    ctx.save();
-    ctx.translate(size, 0);
-    ctx.scale(-1, 1);
-    ctx.filter = filter === "warm" ? "saturate(1.18) sepia(.16) contrast(1.06)" : filter === "party" ? "saturate(1.42) contrast(1.12) hue-rotate(8deg)" : filter === "mono" ? "grayscale(1) contrast(1.18)" : "none";
-    ctx.drawImage(video, sx, sy, source, source, 0, 0, size, size);
-    ctx.restore();
-    ctx.filter = "none";
-
-    const grad = ctx.createLinearGradient(0, 0, size, size);
-    if (frame === "neon") { grad.addColorStop(0, "#21e7e0"); grad.addColorStop(.5, "#6d27ff"); grad.addColorStop(1, "#ff3dbb"); }
-    else if (frame === "fiesta") { grad.addColorStop(0, "#ff9d17"); grad.addColorStop(.5, "#ff4477"); grad.addColorStop(1, "#20d9d0"); }
-    else { grad.addColorStop(0, "#ffce62"); grad.addColorStop(.5, "#b87014"); grad.addColorStop(1, "#fff0ae"); }
-
-    if (frame === "polaroid") {
-      ctx.fillStyle = "#fffaf0";
-      ctx.fillRect(0, 0, size, 118);
-      ctx.fillRect(0, 0, 78, size);
-      ctx.fillRect(size - 78, 0, 78, size);
-      ctx.fillRect(0, size - 210, size, 210);
-      ctx.fillStyle = "#111";
-      ctx.font = "bold 52px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("EXCLU FEST · LA EXCLUSIVA", size / 2, size - 112);
-      ctx.font = "32px Arial";
-      ctx.fillText("Fiestas del Coto · 11 · 12 · 13 SEPT", size / 2, size - 60);
-    } else {
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 30;
-      ctx.strokeRect(16, 16, size - 32, size - 32);
-      ctx.fillStyle = "rgba(0,0,0,.64)";
-      ctx.fillRect(55, size - 160, size - 110, 95);
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 48px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("EXCLU FEST · LA EXCLUSIVA", size / 2, size - 105);
-      ctx.font = "26px Arial";
-      ctx.fillStyle = "#72fff7";
-      ctx.fillText("YO ESTUVE AQUÍ ✦ FIESTAS DEL COTO 2026", size / 2, size - 72);
-    }
-
-    ctx.textAlign = "center";
-    ctx.font = "110px Arial";
-    if (sticker === "crown") ctx.fillText("👑", size / 2, 145);
-    if (sticker === "glasses") ctx.fillText("😎", size / 2, 270);
-    if (sticker === "heart") ctx.fillText("🧡", size - 135, 150);
-    if (sticker === "confetti") {
-      ctx.font = "76px Arial";
-      ctx.fillText("🎉", 120, 135);
-      ctx.fillText("🥳", size - 120, 135);
-      ctx.fillText("✨", 125, size - 205);
-      ctx.fillText("🎊", size - 125, size - 205);
-    }
-
-    setPhotoUrl(canvas.toDataURL("image/jpeg", .93));
-  }
-
-  function retake() {
-    setPhotoUrl(null);
-    startCamera();
-  }
-
-  function downloadPhoto() {
-    if (!photoUrl) return;
-    const a = document.createElement("a");
-    a.href = photoUrl;
-    a.download = `exclu-fest-${Date.now()}.jpg`;
-    a.click();
-    sound("click");
-  }
-
-  async function sharePhoto() {
-    if (!photoUrl) return;
-    try {
-      const blob = await (await fetch(photoUrl)).blob();
-      const file = new File([blob], "exclu-fest.jpg", { type: "image/jpeg" });
-      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-        await navigator.share({ title: "EXCLU FEST · La Exclusiva", text: "¡Yo estuve en EXCLU FEST! 🤖🎉", files: [file] });
-        sound("win");
-      } else {
-        downloadPhoto();
-        setMessage("Tu navegador no permite compartir directamente; hemos preparado la foto para guardarla.");
+      let stream: MediaStream;
+      try{
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      }catch{
+        // Fallback para móviles/navegadores que no respetan facingMode ideal.
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio:false,
+          video:true
+        });
       }
-    } catch (error: any) {
-      if (error?.name !== "AbortError") setMessage("No se pudo abrir el menú de compartir. Puedes guardar la foto igualmente.");
+
+      streamRef.current=stream;
+      setFacing(next);
+      setPhotoUrl(null);
+
+      if(videoRef.current){
+        videoRef.current.srcObject=stream;
+        videoRef.current.muted=true;
+        videoRef.current.playsInline=true;
+        await videoRef.current.play();
+      }
+
+      setCameraOn(true);
+    }catch(err){
+      console.error("Error al abrir la cámara:",err);
+      setCameraOn(false);
+      alert("No se ha podido abrir la cámara. Revisa que el navegador tenga permiso para usarla.");
     }
   }
 
-  const liveClass = `photo-live filter-${filter} frame-${frame}`;
+  async function switchCamera(){
+    const next: "user" | "environment" = facing==="user" ? "environment" : "user";
+    await startCamera(next);
+  }
+  function capture(){
+    const v=videoRef.current,c=canvasRef.current;
+    if(!v||!c||!cameraOn)return;
+    const vw=v.videoWidth||1080,vh=v.videoHeight||1080,size=Math.min(vw,vh);
+    c.width=1080;c.height=1080;
+    const x=c.getContext("2d");if(!x)return;
+    x.save();
+    if(facing==="user"){x.translate(1080,0);x.scale(-1,1);}
+    x.filter=filterCss[filter]||"none";
+    x.drawImage(v,(vw-size)/2,(vh-size)/2,size,size,0,0,1080,1080);
+    x.restore();
+    x.strokeStyle="#f6c51c";x.lineWidth=22;x.strokeRect(12,12,1056,1056);
+    const names:Record<string,string>={classic:"LA EXCLUSIVA",party:"FIESTAS",selfie:"SELFIE EXCLU",cheers:"BRINDIS",good:"BUEN ROLLO",team:"EQUIPO EXCLU",asturias:"ASTURIAS"};
+    x.fillStyle="rgba(0,0,0,.68)";x.fillRect(25,25,1030,90);
+    x.fillStyle="#ffd329";x.font="700 36px sans-serif";x.textAlign="center";x.fillText(names[frame],540,82);
+    const st:Record<string,string>={exclu:"🤖",salud:"¡Salud!",beer:"🍻",hearts:"💕",crown:"👑",glasses:"🕶️",confetti:"🎉",heart:"💗",coffee:"☕",exclusive:"LA EXCLUSIVA",selfie:"Selfie Time ♡",fiestas:"FIESTAS 2026"};
+    x.font=["salud","exclusive","selfie","fiestas"].includes(sticker)?"700 52px sans-serif":"105px sans-serif";
+    x.textAlign="right";x.fillStyle="#ffd329";x.fillText(st[sticker],1015,1010);
+    setPhotoUrl(c.toDataURL("image/jpeg",.92));onPhotoCreated();navigator.vibrate?.(60);
+  }
+  function save(){
+    if(!photoUrl)return;const a=document.createElement("a");a.href=photoUrl;a.download=`exclu-fotomaton-${Date.now()}.jpg`;a.click();
+  }
+  async function share(){
+    if(!photoUrl)return;
+    try{const blob=await(await fetch(photoUrl)).blob();const file=new File([blob],"exclu-fotomaton.jpg",{type:"image/jpeg"});
+      if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]})))await navigator.share({title:"Fotomatón La Exclusiva",files:[file]});else save();
+    }catch{}
+  }
+  useEffect(()=>()=>{ streamRef.current?.getTracks().forEach(t=>t.stop()); },[]);
 
-  return <section className="photobooth-shell">
-    <div className="photobooth-head">
-      <span>📸 FOTOMATÓN EXCLU</span>
-      <h1>¡LA FOTO MÁS DIVERTIDA DE LAS FIESTAS!</h1>
-      <p>Hazla, personalízala y compártela. EXCLU pone el marco; tú pones la fiesta.</p>
-    </div>
+  return <main className="photo112">
+    <div className="photo112-stage" data-facing={facing}>
+      <img className="photo112-art" src="/assets/fotomaton-definitivo-aprobado.png" alt="Fotomatón La Exclusiva"/>
+      <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
-    <div className="photobooth-layout">
-      <div className="camera-card">
-        <div className={liveClass}>
-          {!photoUrl && <video ref={videoRef} playsInline muted autoPlay />}
-          {photoUrl && <img src={photoUrl} alt="Tu foto de EXCLU FEST" />}
-          {!cameraOn && !photoUrl && <div className="camera-empty"><img src="/assets/exclu-robot-premium.png" alt="EXCLU"/><b>EXCLU TE ESTÁ ESPERANDO</b><small>Activa la cámara para empezar</small></div>}
-          {cameraOn && !photoUrl && <div className="live-badge-photo">● EN DIRECTO</div>}
-          {countdown !== null && <div className="photo-countdown">{countdown === 0 ? "📸" : countdown}</div>}
-          {flash && <div className="camera-flash"/>}
-          {!photoUrl && cameraOn && sticker !== "none" && <div className={`live-sticker sticker-${sticker}`}>{sticker === "crown" ? "👑" : sticker === "glasses" ? "😎" : sticker === "heart" ? "🧡" : "🎉 ✨ 🎊"}</div>}
-          {!photoUrl && cameraOn && <div className="live-caption"><b>EXCLU FEST</b><small>LA EXCLUSIVA · FIESTAS DEL COTO 2026</small></div>}
-        </div>
-        <canvas ref={canvasRef} hidden />
-
-        <div className="camera-actions">
-          {!cameraOn && !photoUrl && <button className="photo-primary" onClick={startCamera}>📷 ACTIVAR CÁMARA</button>}
-          {cameraOn && !photoUrl && <button className="photo-shutter" onClick={takePhoto} disabled={countdown !== null}><span>●</span><b>{countdown !== null ? "PREPÁRATE…" : "HACER FOTO"}</b></button>}
-          {photoUrl && <><button className="photo-primary" onClick={sharePhoto}>📲 COMPARTIR FOTO</button><button className="photo-secondary" onClick={downloadPhoto}>⬇ GUARDAR</button><button className="photo-secondary" onClick={retake}>↻ OTRA FOTO</button></>}
-        </div>
-        <p className="photo-message">{message}</p>
+      <div className="p112-preview">
+        {!cameraOn&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
+        <video ref={videoRef} playsInline muted className={cameraOn&&!photoUrl?"show":""} style={{filter:filterCss[filter]}}/>
+        {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
       </div>
 
-      <aside className="photo-tools">
-        <div><h3>MARCOS</h3><div className="tool-grid"><button className={frame === "gold" ? "active" : ""} onClick={()=>setFrame("gold")}>✨ Dorado</button><button className={frame === "neon" ? "active" : ""} onClick={()=>setFrame("neon")}>💜 Neón</button><button className={frame === "fiesta" ? "active" : ""} onClick={()=>setFrame("fiesta")}>🎆 Fiesta</button><button className={frame === "polaroid" ? "active" : ""} onClick={()=>setFrame("polaroid")}>📷 Polaroid</button></div></div>
-        <div><h3>STICKERS</h3><div className="tool-grid"><button className={sticker === "none" ? "active" : ""} onClick={()=>setSticker("none")}>Sin sticker</button><button className={sticker === "crown" ? "active" : ""} onClick={()=>setSticker("crown")}>👑 Corona</button><button className={sticker === "glasses" ? "active" : ""} onClick={()=>setSticker("glasses")}>😎 Gafas</button><button className={sticker === "heart" ? "active" : ""} onClick={()=>setSticker("heart")}>🧡 Corazón</button><button className={sticker === "confetti" ? "active" : ""} onClick={()=>setSticker("confetti")}>🎉 Confeti</button></div></div>
-        <div><h3>FILTROS</h3><div className="tool-grid"><button className={filter === "normal" ? "active" : ""} onClick={()=>setFilter("normal")}>Normal</button><button className={filter === "warm" ? "active" : ""} onClick={()=>setFilter("warm")}>🌅 Cálido</button><button className={filter === "party" ? "active" : ""} onClick={()=>setFilter("party")}>🌈 Fiesta</button><button className={filter === "mono" ? "active" : ""} onClick={()=>setFilter("mono")}>◐ Vintage</button></div></div>
-        <div className="photo-tip"><img src="/assets/exclu-robot-premium.png" alt="EXCLU"/><p><b>TRUCO DE EXCLU</b><br/>Pon el móvil vertical, busca buena luz y deja espacio alrededor para que entren el marco y los stickers.</p></div>
-      </aside>
-    </div>
-  </section>;
-}
+      <div className="p112-frames">
+        {frameIds.map((id,i)=><button key={id} className={frame===id?"active":""} style={{top:`${i*14.2857}%`}} onClick={()=>setFrame(id)} aria-label={`Marco ${id}`}/>)}
+      </div>
+      <div className="p112-stickers">
+        {stickerIds.map((id,i)=><button key={id} className={sticker===id?"active":""} style={{left:`${(i%2)*50}%`,top:`${Math.floor(i/2)*16.6667}%`}} onClick={()=>setSticker(id)} aria-label={`Sticker ${id}`}/>)}
+      </div>
+      <div className="p112-filters">
+        {filterIds.map((id,i)=><button key={id} className={filter===id?"active":""} style={{left:`${(i%2)*50}%`,top:`${Math.floor(i/2)*33.3333}%`}} onClick={()=>setFilter(id)} aria-label={`Filtro ${id}`}/>)}
+      </div>
 
-function Prizes({ status }: { status: FestivalStatus }) {
-  const rewards = status.rewards ?? [];
-  return <Card tone="orange" tag="PREMIOS" title="MIS PREMIOS" sub="Tus premios y participaciones están guardados en Supabase">
-    <div className="prize-summary"><div><Ticket/><b>{status.raffle_entries ?? 0}</b><span>participaciones sorteo</span></div><div><Gift/><b>{rewards.length}</b><span>premios instantáneos</span></div></div>
-    <div className="list">{rewards.length === 0 ? <p>🎟️ Todavía no tienes premios instantáneos. Tus participaciones para los 3 desayunos para dos siguen contando.</p> : rewards.map((r) => <div className="reward-row" key={r.reward_code}><span>{r.icon}</span><div><b>{r.name}</b><code>{r.reward_code}</code></div><em className={r.status}>{r.status === "redeemed" ? "CANJEADO" : "PENDIENTE"}</em></div>)}</div>
-  </Card>;
+      <button className="p112-switch" onClick={switchCamera} aria-label="Cambiar cámara"/>
+      <button className="p112-shot" onClick={()=>cameraOn?capture():startCamera()} aria-label="Hacer foto"/>
+      <button className={`p112-flash ${flash?"active":""}`} onClick={()=>setFlash(v=>!v)} aria-label="Flash"/>
+      {photoUrl&&<>
+        <button className="p112-save" onClick={save} aria-label="Guardar"/>
+        <button className="p112-share" onClick={share} aria-label="Compartir"/>
+        <button className="p112-repeat" onClick={()=>setPhotoUrl(null)} aria-label="Repetir"/>
+      </>}
+      <canvas ref={canvasRef} hidden/>
+    </div>
+  </main>;
 }
 
 function Card({ tone, tag, title, sub, children }: any) {
