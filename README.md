@@ -551,3 +551,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Se solicita primero la cámara exacta y se usa fallback compatible.
 - Si el cambio falla, se intenta recuperar la cámara anterior.
 - No se modifica el diseño ni las pantallas congeladas.
+
+
+## 118 · Cámara y controles siempre visibles
+- Corregida la altura del vídeo: ya no tapa Cámara, Disparo ni Flash.
+- Cambio frontal/trasera con una sola pulsación.
+- Bloqueo temporal durante el cambio para evitar dobles pulsaciones.
+- Si falla el cambio, recupera la cámara anterior sin ocultar controles.
+- No se modifica el diseño aprobado ni las pantallas congeladas.

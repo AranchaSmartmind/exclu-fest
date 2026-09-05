@@ -9077,3 +9077,42 @@
 .photo112-stage[data-facing="environment"] .p112-preview video.show{
   transform:none!important;
 }
+
+
+/* ============================================================
+   118 · CÁMARA · CONTROLES SIEMPRE VISIBLES
+   La capa de vídeo termina ANTES de los controles inferiores.
+   Antes el vídeo llegaba hasta ~74.6% del lienzo y tapaba la
+   ilustración de Cámara / Disparo / Flash del boceto aprobado.
+   ============================================================ */
+.p112-preview{
+  left:27.05%!important;
+  top:21.15%!important;
+  width:45.90%!important;
+  height:40.65%!important;
+  z-index:8!important;
+  overflow:hidden!important;
+}
+
+/* El vídeo nunca puede quedar por encima de los hotspots. */
+.p112-preview video,
+.p112-preview .p112-result{
+  z-index:1!important;
+}
+.p112-switch,
+.p112-shot,
+.p112-flash{
+  z-index:80!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+.p112-switch:disabled{
+  pointer-events:none!important;
+}
+
+/* Marcos, stickers y filtros siguen por encima del vídeo. */
+.p112-frames,
+.p112-stickers,
+.p112-filters{
+  z-index:70!important;
+}

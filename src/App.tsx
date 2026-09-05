@@ -1072,6 +1072,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const streamRef=useRef<MediaStream|null>(null);
   const [cameraOn,setCameraOn]=useState(false);
+  const [cameraSwitching,setCameraSwitching]=useState(false);
   const [photoUrl,setPhotoUrl]=useState<string|null>(null);
   const [facing,setFacing]=useState<"user"|"environment">("user");
   const [flash,setFlash]=useState(false);
@@ -1149,17 +1150,19 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   }
 
   async function switchCamera(){
-    const next: "user" | "environment" = facing==="user" ? "environment" : "user";
-    // Conservamos toda la interfaz visible durante el cambio.
-    // Solo sustituimos el stream de vídeo y el botón queda disponible para volver.
+    if(cameraSwitching) return;
+    setCameraSwitching(true);
+
+    const currentFacing=facing;
+    const next: "user" | "environment" = currentFacing==="user" ? "environment" : "user";
+    const previous=streamRef.current;
+
     try{
-      const previous=streamRef.current;
+      // En móviles es más fiable liberar primero la cámara actual.
       previous?.getTracks().forEach(track=>track.stop());
 
       const stream=await getCameraStream(next);
       streamRef.current=stream;
-      setFacing(next);
-      setPhotoUrl(null);
 
       if(videoRef.current){
         videoRef.current.srcObject=stream;
@@ -1167,12 +1170,16 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         videoRef.current.playsInline=true;
         await videoRef.current.play();
       }
+
+      setFacing(next);
       setCameraOn(true);
+      setPhotoUrl(null);
     }catch(err){
       console.error("Error al cambiar de cámara:",err);
-      // Si el cambio falla, intentamos recuperar la cámara anterior.
+
+      // Recuperamos la cámara anterior sin desmontar los controles.
       try{
-        const recovery=await getCameraStream(facing);
+        const recovery=await getCameraStream(currentFacing);
         streamRef.current=recovery;
         if(videoRef.current){
           videoRef.current.srcObject=recovery;
@@ -1180,10 +1187,14 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
           videoRef.current.playsInline=true;
           await videoRef.current.play();
         }
+        setFacing(currentFacing);
         setCameraOn(true);
-      }catch{
+      }catch(recoveryError){
+        console.error("Error al recuperar la cámara:",recoveryError);
         setCameraOn(false);
       }
+    }finally{
+      setCameraSwitching(false);
     }
   }
   function capture(){
@@ -1238,7 +1249,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         {filterIds.map((id,i)=><button key={id} className={filter===id?"active":""} style={{left:`${(i%2)*50}%`,top:`${Math.floor(i/2)*33.3333}%`}} onClick={()=>setFilter(id)} aria-label={`Filtro ${id}`}/>)}
       </div>
 
-      <button className="p112-switch" onClick={switchCamera} aria-label="Cambiar cámara"/>
+      <button className={`p112-switch ${cameraSwitching?"switching":""}`} onClick={switchCamera} disabled={cameraSwitching} aria-label={facing==="user"?"Cambiar a cámara trasera":"Cambiar a cámara frontal"}/>
       <button className="p112-shot" onClick={()=>cameraOn?capture():startCamera()} aria-label="Hacer foto"/>
       <button className={`p112-flash ${flash?"active":""}`} onClick={()=>setFlash(v=>!v)} aria-label="Flash"/>
       {photoUrl&&<>
