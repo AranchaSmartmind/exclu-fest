@@ -1229,7 +1229,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     const d=touchDistance(e.touches);
     if(!d)return;
     const next=pinchZoomStartRef.current*(d/pinchStartRef.current);
-    setCameraZoom(Math.min(3,Math.max(1,next)));
+    setCameraZoom(Math.min(3,Math.max(0.7,next)));
   }
 
   function handleCameraTouchEnd(e: React.TouchEvent<HTMLDivElement>){
@@ -1268,22 +1268,42 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       sy=(vh-sh)/2;
     }
 
-    if(cameraZoom>1){
-      const baseSw=sw;
-      const baseSh=sh;
-      sw=baseSw/cameraZoom;
-      sh=baseSh/cameraZoom;
-      sx=sx+(baseSw-sw)/2;
-      sy=sy+(baseSh-sh)/2;
-    }
-
     x.save();
-    if(facing==="user"){
-      x.translate(outW,0);
-      x.scale(-1,1);
+    x.fillStyle="#000";
+    x.fillRect(0,0,outW,outH);
+
+    if(cameraZoom>=1){
+      if(cameraZoom>1){
+        const baseSw=sw;
+        const baseSh=sh;
+        sw=baseSw/cameraZoom;
+        sh=baseSh/cameraZoom;
+        sx=sx+(baseSw-sw)/2;
+        sy=sy+(baseSh-sh)/2;
+      }
+
+      if(facing==="user"){
+        x.translate(outW,0);
+        x.scale(-1,1);
+      }
+      x.filter=filterCss[filter]||"none";
+      x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
+    }else{
+      const dw=outW*cameraZoom;
+      const dh=outH*cameraZoom;
+      const dx=(outW-dw)/2;
+      const dy=(outH-dh)/2;
+
+      if(facing==="user"){
+        x.translate(outW,0);
+        x.scale(-1,1);
+        x.filter=filterCss[filter]||"none";
+        x.drawImage(v,sx,sy,sw,sh,outW-dx-dw,dy,dw,dh);
+      }else{
+        x.filter=filterCss[filter]||"none";
+        x.drawImage(v,sx,sy,sw,sh,dx,dy,dw,dh);
+      }
     }
-    x.filter=filterCss[filter]||"none";
-    x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
     x.restore();
 
     // Marco sobre la misma composición que se veía antes de disparar.

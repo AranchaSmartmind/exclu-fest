@@ -583,3 +583,10 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - La foto final conserva el mismo zoom que se ve en pantalla.
 - No cambia el zoom, scroll ni tamaño del resto de la app.
 - No modifica las pantallas congeladas ni el diseño aprobado.
+
+
+## 122 · Acercar y alejar solo la cámara
+- Pellizco hacia fuera: zoom hasta 3x.
+- Pellizco hacia dentro: alejar hasta 0.7x.
+- Solo afecta al visor de cámara, nunca a la app.
+- La captura conserva el nivel de zoom/alejamiento visible.
