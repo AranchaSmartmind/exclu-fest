@@ -1089,10 +1089,9 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   };
 
   async function stopCamera(){
-    if(streamRef.current){
-      streamRef.current.getTracks().forEach(track=>track.stop());
-      streamRef.current=null;
-    }
+    const current=streamRef.current;
+    streamRef.current=null;
+    current?.getTracks().forEach(track=>track.stop());
     if(videoRef.current){
       videoRef.current.pause();
       videoRef.current.srcObject=null;
@@ -1100,31 +1099,36 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     setCameraOn(false);
   }
 
-  async function startCamera(next: "user" | "environment" = facing){
+  async function getCameraStream(next: "user" | "environment"){
+    const preferred: MediaStreamConstraints = {
+      audio:false,
+      video:{
+        facingMode:{exact:next},
+        width:{ideal:1280},
+        height:{ideal:1280},
+        aspectRatio:{ideal:1}
+      }
+    };
     try{
-      await stopCamera();
-
-      const constraints: MediaStreamConstraints = {
+      return await navigator.mediaDevices.getUserMedia(preferred);
+    }catch{
+      return await navigator.mediaDevices.getUserMedia({
         audio:false,
         video:{
           facingMode:{ideal:next},
           width:{ideal:1280},
-          height:{ideal:1280},
-          aspectRatio:{ideal:1}
+          height:{ideal:1280}
         }
-      };
+      });
+    }
+  }
 
-      let stream: MediaStream;
-      try{
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      }catch{
-        // Fallback para móviles/navegadores que no respetan facingMode ideal.
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio:false,
-          video:true
-        });
-      }
+  async function startCamera(next: "user" | "environment" = facing){
+    try{
+      const oldStream=streamRef.current;
+      oldStream?.getTracks().forEach(track=>track.stop());
 
+      const stream=await getCameraStream(next);
       streamRef.current=stream;
       setFacing(next);
       setPhotoUrl(null);
@@ -1146,7 +1150,41 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
   async function switchCamera(){
     const next: "user" | "environment" = facing==="user" ? "environment" : "user";
-    await startCamera(next);
+    // Conservamos toda la interfaz visible durante el cambio.
+    // Solo sustituimos el stream de vídeo y el botón queda disponible para volver.
+    try{
+      const previous=streamRef.current;
+      previous?.getTracks().forEach(track=>track.stop());
+
+      const stream=await getCameraStream(next);
+      streamRef.current=stream;
+      setFacing(next);
+      setPhotoUrl(null);
+
+      if(videoRef.current){
+        videoRef.current.srcObject=stream;
+        videoRef.current.muted=true;
+        videoRef.current.playsInline=true;
+        await videoRef.current.play();
+      }
+      setCameraOn(true);
+    }catch(err){
+      console.error("Error al cambiar de cámara:",err);
+      // Si el cambio falla, intentamos recuperar la cámara anterior.
+      try{
+        const recovery=await getCameraStream(facing);
+        streamRef.current=recovery;
+        if(videoRef.current){
+          videoRef.current.srcObject=recovery;
+          videoRef.current.muted=true;
+          videoRef.current.playsInline=true;
+          await videoRef.current.play();
+        }
+        setCameraOn(true);
+      }catch{
+        setCameraOn(false);
+      }
+    }
   }
   function capture(){
     const v=videoRef.current,c=canvasRef.current;

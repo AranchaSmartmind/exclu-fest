@@ -544,3 +544,10 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Tipos de Quiz y Boxes alineados con play().
 - Restaurado el componente Prizes que faltaba.
 - No se modifica el diseño aprobado del Fotomatón ni las pantallas congeladas.
+
+
+## 117 · Cambio de cámara reversible
+- Cambio frontal ↔ trasera sin ocultar los controles.
+- Se solicita primero la cámara exacta y se usa fallback compatible.
+- Si el cambio falla, se intenta recuperar la cámara anterior.
+- No se modifica el diseño ni las pantallas congeladas.
