@@ -1097,7 +1097,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [activeStickerId,setActiveStickerId]=useState<string|null>(null);
   const stickerGestureRef=useRef<{
     id:string;
-    mode:"drag"|"pinch";
+    mode:"drag";
     startX:number;
     startY:number;
     startStickerX:number;
@@ -1397,11 +1397,25 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   function addSticker(kind:string){
     setSticker(kind);
     const id=`${kind}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
-    setPlacedStickers(prev=>[
-      ...prev,
-      {id,kind,x:50,y:50,scale:1}
-    ]);
+
+    setPlacedStickers(prev=>{
+      // El primero sale exactamente en el centro.
+      // Los siguientes se separan apenas unos píxeles para que se vea
+      // que se han añadido varias copias y no queden totalmente solapados.
+      const n=prev.length%5;
+      const offsets=[
+        [0,0],
+        [4,-3],
+        [-4,3],
+        [5,4],
+        [-5,-4]
+      ];
+      const [ox,oy]=offsets[n];
+      return [...prev,{id,kind,x:50+ox,y:50+oy,scale:1}];
+    });
+
     setActiveStickerId(id);
+    navigator.vibrate?.(25);
   }
 
   function updatePlacedSticker(id:string, patch:Partial<PlacedSticker>){
@@ -1415,59 +1429,47 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
   function placedStickerTouchStart(e:React.TouchEvent<HTMLDivElement>, id:string){
     e.stopPropagation();
+
+    // Los stickers NO usan pellizco: el pinch queda reservado a la cámara.
+    if(e.touches.length!==1)return;
+
     const s=placedStickers.find(item=>item.id===id);
     if(!s)return;
 
     setActiveStickerId(id);
 
-    if(e.touches.length>=2){
-      const d=touchDistance(e.touches) || 1;
-      stickerGestureRef.current={
-        id,mode:"pinch",
-        startX:0,startY:0,
-        startStickerX:s.x,startStickerY:s.y,
-        startDistance:d,startScale:s.scale
-      };
-      return;
-    }
-
     const t=e.touches[0];
     stickerGestureRef.current={
-      id,mode:"drag",
-      startX:t.clientX,startY:t.clientY,
-      startStickerX:s.x,startStickerY:s.y,
-      startDistance:0,startScale:s.scale
+      id,
+      mode:"drag",
+      startX:t.clientX,
+      startY:t.clientY,
+      startStickerX:s.x,
+      startStickerY:s.y,
+      startDistance:0,
+      startScale:s.scale
     };
   }
 
   function placedStickerTouchMove(e:React.TouchEvent<HTMLDivElement>){
     const g=stickerGestureRef.current;
-    if(!g)return;
+    if(!g || e.touches.length!==1)return;
 
     e.stopPropagation();
     e.preventDefault();
 
     const preview=previewRef.current;
     if(!preview)return;
+
     const rect=preview.getBoundingClientRect();
+    const t=e.touches[0];
+    const dx=((t.clientX-g.startX)/rect.width)*100;
+    const dy=((t.clientY-g.startY)/rect.height)*100;
 
-    if(e.touches.length>=2){
-      const d=touchDistance(e.touches);
-      if(!d || !g.startDistance)return;
-      const nextScale=Math.min(3.25,Math.max(.35,g.startScale*(d/g.startDistance)));
-      updatePlacedSticker(g.id,{scale:nextScale});
-      return;
-    }
-
-    if(g.mode==="drag" && e.touches.length===1){
-      const t=e.touches[0];
-      const dx=((t.clientX-g.startX)/rect.width)*100;
-      const dy=((t.clientY-g.startY)/rect.height)*100;
-      updatePlacedSticker(g.id,{
-        x:Math.min(96,Math.max(4,g.startStickerX+dx)),
-        y:Math.min(96,Math.max(4,g.startStickerY+dy))
-      });
-    }
+    updatePlacedSticker(g.id,{
+      x:Math.min(96,Math.max(4,g.startStickerX+dx)),
+      y:Math.min(96,Math.max(4,g.startStickerY+dy))
+    });
   }
 
   function placedStickerTouchEnd(){
@@ -1619,7 +1621,9 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
         <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
-        {!photoUrl&&placedStickers.map((ps)=>{
+        {!photoUrl&&
+          <div className="p112-sticker-layer" aria-label="Stickers colocados">
+            {placedStickers.map((ps)=>{
           const glyph=stickerGlyphs[ps.kind]||ps.kind;
           const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
           return <div
@@ -1636,15 +1640,36 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
             onClick={(e)=>{e.stopPropagation();setActiveStickerId(ps.id)}}
           >
             <span>{glyph}</span>
-            {activeStickerId===ps.id&&
+            {activeStickerId===ps.id&&<>
+              <button
+                className="p112-sticker-size p112-sticker-smaller"
+                onTouchStart={(e)=>e.stopPropagation()}
+                onClick={(e)=>{
+                  e.stopPropagation();
+                  updatePlacedSticker(ps.id,{scale:Math.max(.35,ps.scale-.18)});
+                }}
+                aria-label="Hacer sticker más pequeño"
+              >−</button>
+              <button
+                className="p112-sticker-size p112-sticker-bigger"
+                onTouchStart={(e)=>e.stopPropagation()}
+                onClick={(e)=>{
+                  e.stopPropagation();
+                  updatePlacedSticker(ps.id,{scale:Math.min(3.25,ps.scale+.18)});
+                }}
+                aria-label="Hacer sticker más grande"
+              >+</button>
               <button
                 className="p112-sticker-delete"
+                onTouchStart={(e)=>e.stopPropagation()}
                 onClick={(e)=>{e.stopPropagation();removePlacedSticker(ps.id)}}
                 aria-label="Eliminar sticker"
               >×</button>
-            }
+            </>}
           </div>
         })}
+          </div>
+        }
       </div>
 
       <div className="p112-frames">

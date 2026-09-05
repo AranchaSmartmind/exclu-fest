@@ -1,0 +1,19 @@
+EXCLU · HOME 011 — PLAZA DE LA REPÚBLICA CORREGIDA
+
+Cambio de esta versión:
+- Se mantiene exactamente la Home 010 aprobada.
+- Se sustituye únicamente la imagen principal de Inicio.
+- El edificio de fondo corresponde al edificio de la Plaza de la República aportado por la usuaria.
+- Se conservan los fuegos artificiales multicolor, los reflejos de color en el suelo, EXCLU, el vaso de La Exclusiva, textos, botones y navegación.
+- No se modifica la lógica de Supabase, premios, pasaporte, ruleta, fotomatón, Arcade ni administración.
+- No hay migraciones SQL nuevas.
+
+Instalación sobre el repo exclu-fest:
+1. Descomprime el ZIP.
+2. Copia todo el contenido encima de C:\\Users\\Usuario\\Desktop\\exclu-fest y sustituye archivos.
+3. Conserva tu .env.local.
+4. Ejecuta npm run dev para comprobar la portada.
+5. git add .
+6. git commit -m "Corrige edificio Plaza de la Republica en Home"
+7. git push
+8. Netlify redesplegará automáticamente.

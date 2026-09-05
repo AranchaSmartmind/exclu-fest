@@ -1,0 +1,15 @@
+EXCLU FEST 007 — RULETA FLUIDA + CELEBRACIÓN FULL SCREEN
+
+1. Copia todo el contenido sobre tu carpeta exclu-fest.
+2. Conserva tu .env.local.
+3. No hay SQL nuevo en esta versión.
+4. Ejecuta npm run dev y Ctrl+F5.
+
+Cambios principales:
+- EXCLU usa la nueva imagen premium enviada por ti.
+- Ruleta con giro continuo lineal + frenado progresivo sin saltos.
+- Vibración ligera en móvil al girar y al ganar (si el navegador la permite).
+- Resultado ganador a pantalla completa.
+- Confeti ocupa toda la pantalla.
+- Fuegos artificiales CSS y celebración de EXCLU.
+- Premio y código de canje destacados.

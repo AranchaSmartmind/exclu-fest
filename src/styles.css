@@ -9613,3 +9613,123 @@
   z-index:3!important;
   pointer-events:auto!important;
 }
+
+
+/* ============================================================
+   136 · STICKERS VISIBLES EN EL CENTRO DEL VISOR
+   ============================================================ */
+
+/* Capa exclusiva para stickers, siempre por encima de la cámara. */
+.p112-sticker-layer{
+  position:absolute!important;
+  inset:0!important;
+  z-index:1200!important;
+  overflow:visible!important;
+  pointer-events:none!important;
+}
+
+/* Cada sticker vuelve a aceptar interacción dentro de la capa. */
+.p112-sticker-layer .p112-placed-sticker{
+  z-index:1!important;
+  pointer-events:auto!important;
+  opacity:1!important;
+  visibility:visible!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  animation:p112StickerIn .16s ease-out both!important;
+}
+
+/* Más visibles al aparecer. */
+.p112-sticker-layer .p112-placed-sticker > span{
+  font-size:52px!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+.p112-sticker-layer .p112-placed-sticker.textual > span{
+  font-size:20px!important;
+  padding:4px 7px!important;
+  border-radius:7px!important;
+  background:rgba(0,0,0,.42)!important;
+}
+
+.p112-sticker-layer .p112-placed-sticker.active{
+  outline:2px dashed #00efff!important;
+  outline-offset:6px!important;
+  filter:drop-shadow(0 0 6px rgba(0,239,255,.75))!important;
+}
+
+@keyframes p112StickerIn{
+  from{opacity:0;transform:translate(-50%,-50%) scale(.55)}
+  to{opacity:1}
+}
+
+
+/* ============================================================
+   137 · CONTROLES DE TAMAÑO VISIBLES PARA STICKERS
+   El pinch existente se conserva; + / - facilitan el uso móvil.
+   ============================================================ */
+.p112-sticker-size{
+  position:absolute!important;
+  bottom:-20px!important;
+  width:28px!important;
+  height:28px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+  border:1.5px solid #00efff!important;
+  background:#050505!important;
+  color:#fff!important;
+  font-size:20px!important;
+  line-height:24px!important;
+  font-weight:900!important;
+  text-align:center!important;
+  z-index:5!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  box-shadow:0 0 6px rgba(0,239,255,.55)!important;
+}
+
+.p112-sticker-smaller{
+  left:-20px!important;
+}
+
+.p112-sticker-bigger{
+  right:-20px!important;
+}
+
+.p112-sticker-delete{
+  touch-action:manipulation!important;
+}
+
+/* Los botones no heredan el escalado visual del contenido. */
+.p112-placed-sticker.active .p112-sticker-size,
+.p112-placed-sticker.active .p112-sticker-delete{
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+
+/* ============================================================
+   138 · STICKERS SIN PELLIZCO
+   El gesto pinch queda EXCLUSIVAMENTE para el zoom de cámara.
+   Los stickers se redimensionan solo con − y +.
+   ============================================================ */
+.p112-placed-sticker{
+  touch-action:none!important;
+}
+
+/* Botones de tamaño y borrado permanecen activos y visibles. */
+.p112-sticker-size,
+.p112-sticker-delete{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+}
+
+/* Refuerzo visual de los tres controles del sticker seleccionado. */
+.p112-placed-sticker.active .p112-sticker-smaller,
+.p112-placed-sticker.active .p112-sticker-bigger,
+.p112-placed-sticker.active .p112-sticker-delete{
+  opacity:1!important;
+  visibility:visible!important;
+}

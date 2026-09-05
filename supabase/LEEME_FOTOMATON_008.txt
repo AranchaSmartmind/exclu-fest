@@ -1,0 +1,24 @@
+EXCLU FEST 008 · FOTOMATÓN EXCLU
+
+Esta versión añade el fotomatón completo sin SQL nuevo:
+- cámara frontal en directo
+- cuenta atrás 3, 2, 1
+- flash y vibración
+- foto cuadrada optimizada para compartir
+- 4 marcos: dorado, neón, fiesta y polaroid
+- stickers: corona, gafas, corazón y confeti
+- filtros: normal, cálido, fiesta y vintage
+- marca EXCLU FEST / La Exclusiva incrustada en la foto
+- compartir con el menú nativo del móvil cuando el navegador lo permite
+- guardar la foto en JPG
+- repetir foto
+
+IMPORTANTE:
+La cámara funciona en localhost y en producción mediante HTTPS. En una URL HTTP normal del móvil el navegador puede bloquear getUserMedia.
+
+Instalación:
+1) Copia el contenido sobre tu carpeta exclu-fest.
+2) Conserva tu .env.local.
+3) No ejecutes SQL nuevo.
+4) npm run dev
+5) Ctrl+F5

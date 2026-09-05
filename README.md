@@ -677,3 +677,28 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - El sticker seleccionado muestra un contorno de edición y un botón × para eliminarlo.
 - La fotografía final conserva todos los stickers, posiciones y tamaños.
 - No se modifica la transición de cámara aprobada ni ninguna otra función cerrada.
+
+
+## 136 · Stickers visibles en el centro
+- Al pulsar un sticker aparece inmediatamente en el centro del visor.
+- Las copias siguientes se desplazan ligeramente para que no queden ocultas una encima de otra.
+- Capa de stickers elevada por encima del vídeo para garantizar visibilidad.
+- Mantiene arrastre, pellizco para tamaño, múltiples copias y eliminación.
+- No se toca la transición de cámara aprobada ni otras funciones cerradas.
+
+
+## 137 · Controles de tamaño para stickers
+- Al seleccionar un sticker aparecen botones − y +.
+- − reduce el sticker y + lo amplía.
+- Se conserva el arrastre para posicionarlo y el gesto pinch existente.
+- Se conserva × para eliminar.
+- No se modifica transición de cámaras ni otras pantallas.
+
+
+## 138 · Stickers sin pellizco
+- El pellizco queda reservado exclusivamente al zoom de la cámara.
+- Los stickers se mueven con un dedo.
+- El botón − reduce el tamaño.
+- El botón + aumenta el tamaño.
+- El botón × sigue eliminando el sticker seleccionado.
+- No se modifica la transición de cámaras ni otras funciones aprobadas.
