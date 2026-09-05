@@ -1069,12 +1069,16 @@ function Passport({ status }: { status: FestivalStatus }) {
 
 function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setView: (v: View) => void }){
   const videoRef=useRef<HTMLVideoElement|null>(null);
+  const previewRef=useRef<HTMLDivElement|null>(null);
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const streamRef=useRef<MediaStream|null>(null);
   const [cameraOn,setCameraOn]=useState(false);
   const [cameraActivated,setCameraActivated]=useState(false);
   const [cameraSwitching,setCameraSwitching]=useState(false);
   const [cameraZoom,setCameraZoom]=useState(1);
+  const [cameraZoomMin,setCameraZoomMin]=useState(1);
+  const [cameraZoomMax,setCameraZoomMax]=useState(3);
+  const [nativeZoom,setNativeZoom]=useState(false);
   const pinchStartRef=useRef<number|null>(null);
   const pinchZoomStartRef=useRef(1);
   const [photoUrl,setPhotoUrl]=useState<string|null>(null);
@@ -1129,6 +1133,45 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     }
   }
 
+  async function configureZoom(stream: MediaStream, activeFacing: "user" | "environment"){
+    const track=stream.getVideoTracks()[0];
+    const caps=(track?.getCapabilities?.() || {}) as MediaTrackCapabilities & {
+      zoom?: {min:number;max:number;step?:number}
+    };
+
+    // La cámara frontal no debe simular 0.5x: eso encoge el vídeo.
+    // Solo permitimos <1x en trasera si el navegador/hardware lo ofrece de verdad.
+    if(activeFacing==="environment" && caps.zoom){
+      const min=Math.max(0.5,Number(caps.zoom.min)||1);
+      const max=Math.min(3,Number(caps.zoom.max)||3);
+      setCameraZoomMin(min);
+      setCameraZoomMax(max);
+      setNativeZoom(true);
+      const initial=Math.min(max,Math.max(min,1));
+      setCameraZoom(initial);
+      try{
+        await track.applyConstraints({advanced:[{zoom:initial} as MediaTrackConstraintSet]});
+      }catch{}
+      return;
+    }
+
+    setCameraZoomMin(1);
+    setCameraZoomMax(3);
+    setNativeZoom(false);
+    setCameraZoom(1);
+  }
+
+  async function applyZoom(next:number){
+    if(nativeZoom){
+      const track=streamRef.current?.getVideoTracks()[0];
+      if(track){
+        try{
+          await track.applyConstraints({advanced:[{zoom:next} as MediaTrackConstraintSet]});
+        }catch{}
+      }
+    }
+  }
+
   async function startCamera(next: "user" | "environment" = facing){
     try{
       const oldStream=streamRef.current;
@@ -1136,6 +1179,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
       const stream=await getCameraStream(next);
       streamRef.current=stream;
+      await configureZoom(stream,next);
       setFacing(next);
       setPhotoUrl(null);
 
@@ -1160,7 +1204,6 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     setCameraSwitching(true);
 
     const currentFacing=facing;
-    setCameraZoom(1);
     const next: "user" | "environment" = currentFacing==="user" ? "environment" : "user";
     const previous=streamRef.current;
 
@@ -1170,6 +1213,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
       const stream=await getCameraStream(next);
       streamRef.current=stream;
+      await configureZoom(stream,next);
 
       if(videoRef.current){
         videoRef.current.srcObject=stream;
@@ -1189,6 +1233,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       try{
         const recovery=await getCameraStream(currentFacing);
         streamRef.current=recovery;
+        await configureZoom(recovery,currentFacing);
         if(videoRef.current){
           videoRef.current.srcObject=recovery;
           videoRef.current.muted=true;
@@ -1207,6 +1252,28 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       setCameraSwitching(false);
     }
   }
+  useEffect(()=>{
+    const el=previewRef.current;
+    if(!el)return;
+
+    const onTouchMove=(ev: TouchEvent)=>{
+      if(ev.touches.length>=2) ev.preventDefault();
+    };
+    const onGesture=(ev: Event)=>ev.preventDefault();
+
+    el.addEventListener("touchmove",onTouchMove,{passive:false});
+    el.addEventListener("gesturestart",onGesture,{passive:false} as AddEventListenerOptions);
+    el.addEventListener("gesturechange",onGesture,{passive:false} as AddEventListenerOptions);
+    el.addEventListener("gestureend",onGesture,{passive:false} as AddEventListenerOptions);
+
+    return ()=>{
+      el.removeEventListener("touchmove",onTouchMove);
+      el.removeEventListener("gesturestart",onGesture);
+      el.removeEventListener("gesturechange",onGesture);
+      el.removeEventListener("gestureend",onGesture);
+    };
+  },[]);
+
   function touchDistance(touches: React.TouchList){
     if(touches.length<2)return null;
     const a=touches[0],b=touches[1];
@@ -1228,8 +1295,10 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     e.preventDefault();
     const d=touchDistance(e.touches);
     if(!d)return;
-    const next=pinchZoomStartRef.current*(d/pinchStartRef.current);
-    setCameraZoom(Math.min(3,Math.max(0.5,next)));
+    const raw=pinchZoomStartRef.current*(d/pinchStartRef.current);
+    const next=Math.min(cameraZoomMax,Math.max(cameraZoomMin,raw));
+    setCameraZoom(next);
+    void applyZoom(next);
   }
 
   function handleCameraTouchEnd(e: React.TouchEvent<HTMLDivElement>){
@@ -1268,42 +1337,24 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       sy=(vh-sh)/2;
     }
 
-    x.save();
-    x.fillStyle="#000";
-    x.fillRect(0,0,outW,outH);
-
-    if(cameraZoom>=1){
-      if(cameraZoom>1){
-        const baseSw=sw;
-        const baseSh=sh;
-        sw=baseSw/cameraZoom;
-        sh=baseSh/cameraZoom;
-        sx=sx+(baseSw-sw)/2;
-        sy=sy+(baseSh-sh)/2;
-      }
-
-      if(facing==="user"){
-        x.translate(outW,0);
-        x.scale(-1,1);
-      }
-      x.filter=filterCss[filter]||"none";
-      x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
-    }else{
-      const dw=outW*cameraZoom;
-      const dh=outH*cameraZoom;
-      const dx=(outW-dw)/2;
-      const dy=(outH-dh)/2;
-
-      if(facing==="user"){
-        x.translate(outW,0);
-        x.scale(-1,1);
-        x.filter=filterCss[filter]||"none";
-        x.drawImage(v,sx,sy,sw,sh,outW-dx-dw,dy,dw,dh);
-      }else{
-        x.filter=filterCss[filter]||"none";
-        x.drawImage(v,sx,sy,sw,sh,dx,dy,dw,dh);
-      }
+    // Con zoom nativo el stream ya viene con el encuadre correcto.
+    // Sin zoom nativo, solo hacemos zoom digital por encima de 1x.
+    if(!nativeZoom && cameraZoom>1){
+      const baseSw=sw;
+      const baseSh=sh;
+      sw=baseSw/cameraZoom;
+      sh=baseSh/cameraZoom;
+      sx=sx+(baseSw-sw)/2;
+      sy=sy+(baseSh-sh)/2;
     }
+
+    x.save();
+    if(facing==="user"){
+      x.translate(outW,0);
+      x.scale(-1,1);
+    }
+    x.filter=filterCss[filter]||"none";
+    x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
     x.restore();
 
     // Marco sobre la misma composición que se veía antes de disparar.
@@ -1350,10 +1401,10 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <img className="photo112-art" src="/assets/fotomaton-definitivo-aprobado.png" alt="Fotomatón La Exclusiva"/>
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
-      <div className="p112-preview" onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
+      <div ref={previewRef} className="p112-preview" onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
       <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
-        <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
+        <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": nativeZoom?1:Math.max(1,cameraZoom)} as React.CSSProperties}/>
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
       </div>
 

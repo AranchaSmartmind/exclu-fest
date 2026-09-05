@@ -9257,3 +9257,35 @@
 .photo112-stage[data-facing="environment"] .p112-preview video.show{
   transform:none!important;
 }
+
+
+/* ============================================================
+   125 · ZOOM SOLO EN LA CÁMARA
+   El gesto nunca escala la app.
+   En frontal, mínimo 1x real.
+   En trasera, <1x solo si el dispositivo lo soporta nativamente.
+   ============================================================ */
+.p112-preview{
+  touch-action:none!important;
+  overscroll-behavior:contain!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  overflow:hidden!important;
+}
+
+.photo112-stage[data-facing="user"] .p112-preview video.show{
+  transform:scaleX(-1) scale(var(--camera-zoom,1))!important;
+  transform-origin:center center!important;
+}
+
+.photo112-stage[data-facing="environment"] .p112-preview video.show{
+  transform:scale(var(--camera-zoom,1))!important;
+  transform-origin:center center!important;
+}
+
+.p112-preview video.show{
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+}

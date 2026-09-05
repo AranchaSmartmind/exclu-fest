@@ -606,3 +606,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Si una cámara no permite menos de 1x, no se simula con bordes negros.
 - Indicador de zoom forzado por encima del vídeo.
 - El visor siempre queda completamente relleno.
+
+
+## 125 · Zoom solo en la cámara
+- El pinch dentro del visor no puede hacer zoom de página/app.
+- Frontal: 1x–3x, sin falso 0.5x.
+- Trasera: menos de 1x solo si el hardware/browser lo soporta realmente.
+- La captura conserva exactamente el zoom mostrado.
+- El indicador sigue visible dentro del visor.
