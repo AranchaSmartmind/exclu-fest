@@ -575,3 +575,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - La cámara frontal conserva el espejo también en la foto final.
 - El Fotomatón se limita por ancho y por altura del viewport móvil.
 - No se modifican Home, Play Hub, Ruleta ni Pasaporte.
+
+
+## 121 · Zoom solo en la cámara
+- Pellizco con dos dedos únicamente sobre el visor de cámara.
+- Rango de zoom 1x–3x.
+- La foto final conserva el mismo zoom que se ve en pantalla.
+- No cambia el zoom, scroll ni tamaño del resto de la app.
+- No modifica las pantallas congeladas ni el diseño aprobado.

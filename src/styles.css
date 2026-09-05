@@ -9159,3 +9159,26 @@
   object-fit:cover!important;
   object-position:center center!important;
 }
+
+
+/* ============================================================
+   121 · ZOOM SOLO EN LA CÁMARA
+   El gesto de pellizco afecta únicamente al visor fotográfico.
+   El resto de la app conserva scroll, tamaño y gestos normales.
+   ============================================================ */
+.p112-preview{
+  touch-action:none!important;
+  overflow:hidden!important;
+}
+
+/* Cámara frontal: espejo + zoom. */
+.photo112-stage[data-facing="user"] .p112-preview video.show{
+  transform:scaleX(-1) scale(var(--camera-zoom,1))!important;
+  transform-origin:center center!important;
+}
+
+/* Cámara trasera: zoom sin espejo. */
+.photo112-stage[data-facing="environment"] .p112-preview video.show{
+  transform:scale(var(--camera-zoom,1))!important;
+  transform-origin:center center!important;
+}

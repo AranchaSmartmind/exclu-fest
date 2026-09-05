@@ -1074,6 +1074,9 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [cameraOn,setCameraOn]=useState(false);
   const [cameraActivated,setCameraActivated]=useState(false);
   const [cameraSwitching,setCameraSwitching]=useState(false);
+  const [cameraZoom,setCameraZoom]=useState(1);
+  const pinchStartRef=useRef<number|null>(null);
+  const pinchZoomStartRef=useRef(1);
   const [photoUrl,setPhotoUrl]=useState<string|null>(null);
   const [facing,setFacing]=useState<"user"|"environment">("user");
   const [flash,setFlash]=useState(false);
@@ -1157,6 +1160,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     setCameraSwitching(true);
 
     const currentFacing=facing;
+    setCameraZoom(1);
     const next: "user" | "environment" = currentFacing==="user" ? "environment" : "user";
     const previous=streamRef.current;
 
@@ -1203,6 +1207,38 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       setCameraSwitching(false);
     }
   }
+  function touchDistance(touches: React.TouchList){
+    if(touches.length<2)return null;
+    const a=touches[0],b=touches[1];
+    return Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
+  }
+
+  function handleCameraTouchStart(e: React.TouchEvent<HTMLDivElement>){
+    if(e.touches.length===2){
+      const d=touchDistance(e.touches);
+      if(d){
+        pinchStartRef.current=d;
+        pinchZoomStartRef.current=cameraZoom;
+      }
+    }
+  }
+
+  function handleCameraTouchMove(e: React.TouchEvent<HTMLDivElement>){
+    if(e.touches.length!==2 || !pinchStartRef.current)return;
+    e.preventDefault();
+    const d=touchDistance(e.touches);
+    if(!d)return;
+    const next=pinchZoomStartRef.current*(d/pinchStartRef.current);
+    setCameraZoom(Math.min(3,Math.max(1,next)));
+  }
+
+  function handleCameraTouchEnd(e: React.TouchEvent<HTMLDivElement>){
+    if(e.touches.length<2){
+      pinchStartRef.current=null;
+      pinchZoomStartRef.current=cameraZoom;
+    }
+  }
+
   function capture(){
     const v=videoRef.current,c=canvasRef.current;
     if(!v||!c||!cameraOn||v.readyState<2)return;
@@ -1230,6 +1266,15 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     }else{
       sh=vw/previewAspect;
       sy=(vh-sh)/2;
+    }
+
+    if(cameraZoom>1){
+      const baseSw=sw;
+      const baseSh=sh;
+      sw=baseSw/cameraZoom;
+      sh=baseSh/cameraZoom;
+      sx=sx+(baseSw-sw)/2;
+      sy=sy+(baseSh-sh)/2;
     }
 
     x.save();
@@ -1285,9 +1330,9 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <img className="photo112-art" src="/assets/fotomaton-definitivo-aprobado.png" alt="Fotomatón La Exclusiva"/>
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
-      <div className="p112-preview">
+      <div className="p112-preview" onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
-        <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter]}}/>
+        <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
       </div>
 
