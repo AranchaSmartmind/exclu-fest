@@ -9246,3 +9246,43 @@
   z-index:999!important;
   pointer-events:none!important;
 }
+
+
+/* ============================================================
+   127 · CAMBIO DE CÁMARA SIN REACTIVAR
+   "Activar cámara" solo aparece antes de la primera activación.
+   Al cambiar frontal/trasera se mantiene el visor.
+   ============================================================ */
+.p112-preview video.show{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+
+/* ============================================================
+   128 · OCULTAR EL TEXTO BAKED "ACTIVA LA CÁMARA" AL CAMBIAR
+   La instrucción forma parte de la imagen base del Fotomatón.
+   Cuando la cámara ya fue activada, ponemos una capa neutra
+   detrás del vídeo para que nunca reaparezca durante el cambio.
+   ============================================================ */
+.p112-preview.camera-active::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(65,48,35,.68), rgba(8,8,10,.96) 72%)!important;
+  pointer-events:none!important;
+}
+
+/* El vídeo/resultados permanecen encima de esa capa. */
+.p112-preview.camera-active video,
+.p112-preview.camera-active .p112-result{
+  z-index:2!important;
+}
+
+/* Indicador de zoom siempre por encima. */
+.p112-preview.camera-active .p112-zoom-indicator{
+  z-index:5!important;
+}

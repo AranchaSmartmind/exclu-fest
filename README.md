@@ -606,3 +606,18 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Indicador de zoom visible.
 - Eliminado el falso 0.5x que encogía la imagen.
 - No se toca el resto del diseño ni las pantallas congeladas.
+
+
+## 127 · Cambio frontal/trasera sin pantalla 'Activar cámara'
+- 'Activar cámara' solo aparece la primera vez que se abre el visor.
+- Durante frontal ↔ trasera el visor permanece activo.
+- No se modifica el zoom 1x–3x que ya funciona.
+- No se toca el resto del diseño ni las pantallas congeladas.
+
+
+## 128 · Sin 'Activa la cámara' al cambiar
+- Identificada la causa real: el texto está incrustado en la imagen base aprobada.
+- Tras la primera activación, una capa neutra tapa ese texto detrás del vídeo.
+- Al cambiar frontal/trasera ya no puede reaparecer la instrucción.
+- El zoom 1x–3x queda intacto.
+- No se modifica el diseño aprobado ni las pantallas congeladas.
