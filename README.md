@@ -637,3 +637,10 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - No retira el congelado hasta que la nueva cámara ya tiene un frame real.
 - Añade una capa DOM opaca que tapa definitivamente 'Activa la cámara'.
 - Mantiene intacto el zoom 1x–3x.
+
+
+## 131 · Crossfade entre cámaras
+- Mantiene oculto el hueco técnico de Safari/iPhone al reiniciar el stream.
+- La cámara nueva entra con un crossfade breve sobre el último frame de la anterior.
+- El frame anterior se desvanece con un ligero blur, evitando sensación de congelación brusca.
+- No modifica zoom 1x–3x ni el resto del diseño.

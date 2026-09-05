@@ -9352,3 +9352,40 @@
 .p112-zoom-indicator{
   z-index:8!important;
 }
+
+
+/* ============================================================
+   131 · TRANSICIÓN SUAVE ENTRE CÁMARA FRONTAL Y TRASERA
+   En iPhone el navegador tiene que reiniciar físicamente el stream.
+   Este crossfade oculta ese corte técnico sin enseñar una pantalla
+   congelada de forma brusca.
+   ============================================================ */
+
+/* El fotograma anterior no desaparece de golpe. */
+.p112-switch-frame{
+  opacity:1!important;
+  transition:
+    opacity .22s ease,
+    filter .22s ease,
+    transform .22s ease!important;
+  filter:blur(0)!important;
+  transform:scale(1.002)!important;
+}
+
+/* La nueva cámara entra suavemente debajo. */
+.p112-preview video.show{
+  opacity:1!important;
+  transition:opacity .22s ease!important;
+}
+
+/* Durante el solapamiento, el frame anterior se difumina y desvanece. */
+.p112-preview.camera-crossfade .p112-switch-frame{
+  opacity:.12!important;
+  filter:blur(2px)!important;
+  transform:scale(1.012)!important;
+}
+
+/* Evita cualquier flash visual del fondo al cambiar de lente. */
+.p112-live-bg{
+  transition:none!important;
+}

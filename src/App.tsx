@@ -1076,6 +1076,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [cameraActivated,setCameraActivated]=useState(false);
   const [cameraSwitching,setCameraSwitching]=useState(false);
   const [switchFrame,setSwitchFrame]=useState<string|null>(null);
+  const [cameraCrossfade,setCameraCrossfade]=useState(false);
   const [cameraZoom,setCameraZoom]=useState(1);
   const pinchStartRef=useRef<number|null>(null);
   const pinchZoomStartRef=useRef(1);
@@ -1282,9 +1283,14 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       setCameraActivated(true);
       setPhotoUrl(null);
 
-      // Un último pintado antes de quitar el fotograma congelado.
+      // Crossfade corto: la nueva cámara entra suavemente mientras
+      // el último fotograma de la anterior se desvanece.
+      setCameraCrossfade(true);
       await nextPaint();
+      await new Promise(resolve=>setTimeout(resolve,180));
       setSwitchFrame(null);
+      await new Promise(resolve=>setTimeout(resolve,80));
+      setCameraCrossfade(false);
 
     }catch(err){
       console.error("Error al cambiar de cámara:",err);
@@ -1306,9 +1312,11 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         setCameraOn(true);
         setCameraActivated(true);
         setSwitchFrame(null);
+        setCameraCrossfade(false);
       }catch(recoveryError){
         console.error("Error al recuperar la cámara:",recoveryError);
         setCameraOn(false);
+        setCameraCrossfade(false);
         // Seguimos sin enseñar nunca la pantalla "Activar cámara".
         setCameraActivated(true);
       }
@@ -1461,7 +1469,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <img className="photo112-art" src="/assets/fotomaton-definitivo-aprobado.png" alt="Fotomatón La Exclusiva"/>
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
-      <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
+      <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
         {cameraActivated&&!photoUrl&&<div className="p112-live-bg" aria-hidden="true"/>}
       <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
