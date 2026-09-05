@@ -621,3 +621,11 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - Al cambiar frontal/trasera ya no puede reaparecer la instrucción.
 - El zoom 1x–3x queda intacto.
 - No se modifica el diseño aprobado ni las pantallas congeladas.
+
+
+## 129 · Cambio de cámara sin pantalla intermedia
+- Al pulsar cambiar cámara se congela el último fotograma visible.
+- Ese fotograma permanece hasta que la nueva cámara ya está reproduciendo.
+- El texto incrustado 'Activa la cámara' queda cubierto con fondo opaco.
+- El zoom 1x–3x no se modifica.
+- No se modifica el diseño ni las pantallas congeladas.

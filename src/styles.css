@@ -9286,3 +9286,35 @@
 .p112-preview.camera-active .p112-zoom-indicator{
   z-index:5!important;
 }
+
+
+/* ============================================================
+   129 · CAMBIO FRONTAL/TRASERA SIN PANTALLA INTERMEDIA
+   Se mantiene el último fotograma visible hasta que la nueva
+   cámara ya está reproduciendo. Nunca se vuelve a enseñar el
+   arte "Activa la cámara".
+   ============================================================ */
+
+/* Fondo completamente opaco: el texto incrustado del arte no puede transparentarse. */
+.p112-preview.camera-active::before{
+  background:#111014!important;
+  opacity:1!important;
+}
+
+/* Fotograma congelado durante la transición. */
+.p112-switch-frame{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  display:block!important;
+  z-index:4!important;
+  pointer-events:none!important;
+}
+
+/* El indicador sigue por encima de todo. */
+.p112-preview .p112-zoom-indicator{
+  z-index:8!important;
+}

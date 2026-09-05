@@ -1075,6 +1075,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [cameraOn,setCameraOn]=useState(false);
   const [cameraActivated,setCameraActivated]=useState(false);
   const [cameraSwitching,setCameraSwitching]=useState(false);
+  const [switchFrame,setSwitchFrame]=useState<string|null>(null);
   const [cameraZoom,setCameraZoom]=useState(1);
   const pinchStartRef=useRef<number|null>(null);
   const pinchZoomStartRef=useRef(1);
@@ -1156,6 +1157,30 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     }
   }
 
+  function freezeCurrentCameraFrame(){
+    const v=videoRef.current;
+    if(!v || v.readyState<2 || !v.videoWidth || !v.videoHeight){
+      setSwitchFrame(null);
+      return;
+    }
+    try{
+      const c=document.createElement("canvas");
+      c.width=v.videoWidth;
+      c.height=v.videoHeight;
+      const ctx=c.getContext("2d");
+      if(!ctx)return;
+
+      if(facing==="user"){
+        ctx.translate(c.width,0);
+        ctx.scale(-1,1);
+      }
+      ctx.drawImage(v,0,0,c.width,c.height);
+      setSwitchFrame(c.toDataURL("image/jpeg",0.82));
+    }catch{
+      setSwitchFrame(null);
+    }
+  }
+
   async function switchCamera(){
     if(cameraSwitching) return;
     setCameraSwitching(true);
@@ -1164,6 +1189,9 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     setCameraZoom(1);
     const next: "user" | "environment" = currentFacing==="user" ? "environment" : "user";
     const previous=streamRef.current;
+
+    // Conservamos visualmente el último fotograma hasta que la nueva cámara esté lista.
+    freezeCurrentCameraFrame();
 
     try{
       // En móviles es más fiable liberar primero la cámara actual.
@@ -1179,6 +1207,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         await videoRef.current.play();
       }
 
+      setSwitchFrame(null);
       setFacing(next);
       setCameraOn(true);
       setCameraActivated(true);
@@ -1196,6 +1225,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
           videoRef.current.playsInline=true;
           await videoRef.current.play();
         }
+        setSwitchFrame(null);
         setFacing(currentFacing);
         setCameraOn(true);
         setCameraActivated(true);
@@ -1206,6 +1236,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       }
     }finally{
       setCameraSwitching(false);
+      setSwitchFrame(null);
     }
   }
   useEffect(()=>{
@@ -1357,6 +1388,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <div className="p112-zoom-indicator" aria-live="polite">{cameraZoom.toFixed(1)}×</div>
         {!cameraActivated&&!photoUrl&&<button className="p112-start" onClick={()=>startCamera()} aria-label="Activar cámara"/>}
         <video ref={videoRef} playsInline muted className={cameraActivated&&!photoUrl?"show":""} style={{filter:filterCss[filter], "--camera-zoom": cameraZoom} as React.CSSProperties}/>
+        {switchFrame&&!photoUrl&&<img src={switchFrame} alt="" className="p112-switch-frame" aria-hidden="true"/>}
         {photoUrl&&<img src={photoUrl} alt="Tu foto" className="p112-result"/>}
       </div>
 
