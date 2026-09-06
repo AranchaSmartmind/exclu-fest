@@ -1,0 +1,24 @@
+EXCLU-FEST v141 — MARCOS APROBADOS
+
+1. Sustituye:
+   src/App.tsx
+   por:
+   App_v141.tsx
+   (renómbralo a App.tsx)
+
+2. Copia la carpeta:
+   public/assets/frames/
+   dentro de tu proyecto exclu-fest respetando esa misma ruta.
+
+Marcos:
+- classic = Clásico EXCLU (sin marco)
+- party = Retro
+- selfie = Selfie EXCLU
+- cheers = Brindis
+- good = Buen Rollo
+- team = El Coto está de fiesta
+- asturias = Asturias
+
+Los PNG incluidos tienen el hueco central transparente para mostrar la cámara.
+Después ejecuta:
+npm run dev

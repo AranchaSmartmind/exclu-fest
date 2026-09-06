@@ -9733,3 +9733,11 @@
   opacity:1!important;
   visibility:visible!important;
 }
+
+
+/* 139 · Marcos aprobados */
+.p112-selected-frame{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  object-fit:fill!important;z-index:17!important;pointer-events:none!important;
+}
+.p112-sticker-layer{z-index:18!important;}
