@@ -702,3 +702,9 @@ Implementación funcional basada en el diseño aprobado: cámara, marcos, sticke
 - El botón + aumenta el tamaño.
 - El botón × sigue eliminando el sticker seleccionado.
 - No se modifica la transición de cámaras ni otras funciones aprobadas.
+
+- v182: tarjeta compacta Quiz/Caja + reparación RPC Supabase.
+
+
+## v183
+Ver `README-v183.md` para los últimos cambios.

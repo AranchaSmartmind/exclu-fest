@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BarChart3, CheckCircle2, ChevronLeft, Gift, LockKeyhole, RefreshCw, Sparkles, Ticket, Trophy, Users, XCircle, Volume2, VolumeX, Search, MousePointerClick, Home, Gamepad2, Camera, CalendarDays, UserRound } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { BarChart3, CheckCircle2, ChevronLeft, Gift, LockKeyhole, RefreshCw, Sparkles, Ticket, Trophy, Users, XCircle, Volume2, VolumeX, Search, MousePointerClick, Home, Gamepad2, Camera, CalendarDays, UserRound, Download, Share2 } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import "./styles.css";
 
@@ -15,9 +15,9 @@ function PhotoBadge({ count, className = "" }: { count: number; className?: stri
 }
 
 function BottomNav({ view, setView, photoCount }: { view: View; setView: (v: View) => void; photoCount: number }) {
-  const gamesActive = view === "games" || ["scratch", "fly", "find", "memory", "rings"].includes(view);
+  const gamesActive = view === "games" || ["scratch", "fly", "find", "memory", "rings", "rosco", "snake", "differences", "puzzle"].includes(view);
   return <nav className="unified-bottom-nav" aria-label="Navegación La Exclusiva">
-    <button onClick={() => { sound("click"); setView("home"); }} className={view === "home" ? "active" : ""}><Home/><span>Inicio</span></button>
+    <button onClick={() => { sound("click"); setView("home"); }} className={(view === "home" || view === "prizes") ? "active" : ""}><Home/><span>Inicio</span></button>
     <button onClick={() => { sound("click"); setView("passport"); }} className={view === "passport" ? "active" : ""}><span className="passport-icon"><PassportGlyph/></span><span>Pasaporte</span></button>
     <button onClick={() => { sound("click"); setView("games"); }} className={gamesActive ? "active" : ""}><Gamepad2/><span>Juegos</span></button>
     <button onClick={() => { sound("click"); setView("photo"); }} className={view === "photo" ? "active" : ""}><span className="nav-icon-wrap"><Camera/><PhotoBadge count={photoCount}/></span><span>Fotomatón</span></button>
@@ -55,7 +55,7 @@ function Confetti({ count = 42 }: { count?: number }) {
   return <div className="confetti" aria-hidden="true">{Array.from({length:count}).map((_,i)=><i key={i} style={{left:`${(i*37)%100}%`, animationDelay:`${(i%12)*.07}s`, animationDuration:`${1.8+(i%7)*.17}s`, ['--r' as any]:`${(i*83)%360}deg`}} />)}</div>;
 }
 
-type View = "home" | "play" | "games" | "wheel" | "quiz" | "box" | "passport" | "photo" | "prizes" | "scratch" | "fly" | "find" | "memory" | "rings";
+type View = "home" | "play" | "games" | "wheel" | "quiz" | "box" | "passport" | "photo" | "prizes" | "scratch" | "fly" | "find" | "memory" | "rings" | "rosco" | "snake" | "differences" | "puzzle";
 type GameType = "wheel" | "quiz" | "box";
 
 type PlayedDay = { day: number; game_type: GameType; played_at: string };
@@ -106,6 +106,13 @@ export default function App() {
 
 function Customer() {
   const [view, setView] = useState<View>("home");
+  useEffect(() => {
+    if (view === "play") {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
+  }, [view]);
   const [sessionReady, setSessionReady] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
@@ -229,6 +236,26 @@ function Customer() {
       return null;
     }
 
+    // En modo pruebas, si este día ya fue registrado en Supabase, permitimos repetir
+    // la experiencia tantas veces como sea necesario sin duplicar participaciones reales.
+    if (ROULETTE_PREVIEW_ENABLED && played.has(testDay)) {
+      const won = gameType === "box" ? Math.random() < 0.5 : false;
+      const previewResult = {
+        already_played: false,
+        won,
+        day: testDay,
+        prize_name: won ? "PREMIO DE PRUEBA" : null,
+        prize_description: won ? "Simulación visual: no consume stock ni genera un premio real." : null,
+        prize_icon: won ? "🎁" : null,
+        reward_code: null,
+        raffle_entries: status.raffle_entries ?? 0,
+        passport_complete: Boolean(status.passport_complete),
+        message: won ? "MODO PRUEBAS · Simulación de premio." : "MODO PRUEBAS · Esta vez no ha tocado. Puedes volver a probar."
+      } as GameResult;
+      if (presentResult) setResult(previewResult);
+      return previewResult;
+    }
+
     setBusy(true);
     setNotice(null);
     try {
@@ -252,7 +279,7 @@ function Customer() {
   }
 
   if (!sessionReady) {
-    return <div className="splash"><img src="/assets/exclu-robot-premium.png" alt="EXCLU"/><p>EXCLU está preparando la fiesta…</p></div>;
+    return <div className="splash"><img src="/assets/exclu-approved-photobooth.png" alt="EXCLU"/><p>EXCLU está preparando la fiesta…</p></div>;
   }
 
   if (result) {
@@ -260,9 +287,9 @@ function Customer() {
   }
 
   return (
-    <div className={`app ${view === "home" ? "home-screen" : ""} ${view === "passport" ? "passport-view" : ""} ${view === "photo" ? "photo-view" : ""}`}>
+    <div className={`app ${view === "home" ? "home-screen" : ""} ${view === "play" ? "play-screen" : ""} ${view === "passport" ? "passport-view" : ""} ${view === "wheel" ? "wheel-view" : ""} ${view === "quiz" ? "quiz-view" : ""} ${view === "box" ? "box-view" : ""} ${view === "photo" ? "photo-view" : ""} ${view === "prizes" ? "prizes-view" : ""} ${view === "games" ? "games-view" : ""} ${view === "rosco" ? "rosco-view" : ""} ${view === "memory" ? "memory-view" : ""} ${view === "puzzle" ? "puzzle-view" : ""} ${view === "differences" ? "differences-view" : ""}`}>
       {notice && <Notice text={notice} onClose={() => setNotice(null)} />}
-      {view !== "home" && view !== "play" && view !== "passport" && view !== "photo" && (
+      {view !== "home" && view !== "play" && view !== "passport" && view !== "photo" && view !== "prizes" && view !== "games" && view !== "rosco" && view !== "memory" && view !== "puzzle" && view !== "differences" && (
         <button className="sound-toggle" onClick={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2/> : <VolumeX/>}</button>
       )}
 
@@ -301,23 +328,27 @@ function Customer() {
         />
       ) : (
         <div className="screen-wrap">
-          <button className="back" onClick={() => { sound("click"); setView(["wheel", "quiz", "box"].includes(view) ? "play" : "home"); }}><ChevronLeft /> Volver</button>
-          {view === "games" && <GamesHub setView={setView} />}
+          {view !== "passport" && view !== "games" && view !== "rosco" && view !== "memory" && view !== "puzzle" && view !== "differences" && !["wheel","quiz","box"].includes(view) && <button className="back" onClick={() => { sound("click"); setView(["wheel", "quiz", "box"].includes(view) ? "play" : "home"); }}><ChevronLeft /> Volver</button>}
+          {view === "games" && <GamesHub setView={setView} soundOn={soundOn} photoCount={photoCount} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
           {view === "wheel" && <Wheel busy={busy} played={played.has(11)} registered={status.registered} play={() => play("wheel", 11, undefined, false)} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
-          {view === "quiz" && <Quiz busy={busy} played={played.has(12)} play={() => play("quiz", 12)} />}
-          {view === "box" && <Boxes busy={busy} played={played.has(13)} play={(choice) => play("box", 13, choice)} />}
-          {view === "passport" && <Passport status={status} />}
+          {view === "quiz" && <Quiz busy={busy} played={played.has(12)} registered={status.registered} onFinished={async (r) => { setResult(r); await loadStatus(); }} />}
+          {view === "box" && <Boxes busy={busy} played={played.has(13)} registered={status.registered} phoneMasked={status.phone_masked} setView={setView} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} play={(choice) => play("box", 13, choice, false)} />}
+          {view === "passport" && <Passport status={status} setView={setView} />}
           {view === "photo" && <Photo onPhotoCreated={registerPhotoCreated} setView={setView} />}
-          {view === "prizes" && <Prizes status={status} />}
+          {view === "prizes" && <Prizes status={status} setView={setView} />}
           {view === "scratch" && <ScratchGame />}
           {view === "fly" && <ExcluFly />}
           {view === "find" && <FindExclu />}
-          {view === "memory" && <MemoryExclu />}
+          {view === "memory" && <MemoryExclu setView={setView} userId={userId} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} photoCount={photoCount} />}
           {view === "rings" && <RingToss />}
+          {view === "rosco" && <RoscoCoto setView={setView} userId={userId} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
+          {view === "snake" && <SnakeExclu />}
+          {view === "differences" && <SpotDifferences setView={setView} userId={userId} soundOn={soundOn} photoCount={photoCount} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
+          {view === "puzzle" && <PuzzleExclu setView={setView} userId={userId} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
         </div>
       )}
 
-      {view !== "play" && <RegisterPanel
+      {view !== "play" && view !== "box" && view !== "games" && view !== "rosco" && view !== "memory" && view !== "puzzle" && view !== "differences" && <RegisterPanel
         registered={status.registered}
         phoneMasked={status.phone_masked}
         phone={phone}
@@ -327,7 +358,7 @@ function Customer() {
         busy={busy}
         onRegister={registerWithoutSms}
       />}
-      <BottomNav view={view} setView={setView} photoCount={photoCount} />
+      {view !== "photo" && view !== "box" && view !== "games" && view !== "rosco" && view !== "memory" && view !== "puzzle" && view !== "differences" && <BottomNav view={view} setView={setView} photoCount={photoCount} />}
     </div>
   );
 }
@@ -338,11 +369,12 @@ function friendlyError(message = "") {
   if (lower.includes("no hay ningún juego")) return "Hoy todavía no hay un juego activo. Durante las pruebas puedes usar los tres juegos porque el modo test está activado.";
   if (lower.includes("teléfono ya está registrado")) return "Ese teléfono ya está asociado a una participación de EXCLU FEST.";
   if (lower.includes("promoción no está activa")) return "EXCLU FEST todavía no está activo.";
+  if (lower.includes("start_coto_quiz") || lower.includes("finish_coto_quiz") || lower.includes("schema cache")) return "El módulo del Quiz todavía no está instalado en Supabase. Ejecuta el archivo supabase/manual/SUPABASE-EJECUTAR-v182.sql una sola vez y vuelve a probar.";
   return message || "Ha ocurrido un problema. Inténtalo de nuevo.";
 }
 
 function Notice({ text, onClose }: { text: string; onClose: () => void }) {
-  return <div className="notice" role="status"><img src="/assets/exclu-robot-premium.png" alt="EXCLU"/><div><b>EXCLU</b><p>{text}</p></div><button onClick={onClose} aria-label="Cerrar">×</button></div>;
+  return <div className="notice" role="status"><img src="/assets/exclu-approved-photobooth.png" alt="EXCLU"/><div><b>EXCLU</b><p>{text}</p></div><button onClick={onClose} aria-label="Cerrar">×</button></div>;
 }
 
 function DesktopPoster({ setView }: { setView: (v: View) => void }) {
@@ -368,7 +400,12 @@ function MobileHome({ setView, played, registered, raffleEntries, soundOn, photo
         alt="La Exclusiva con EXCLU en ambiente festivo"
       />
 
-      <button className="home-hot home-hot-play" onClick={() => { sound("click"); setView("play"); }} aria-label="Jugar ahora" />
+      <button className="home-hot home-hot-play" onClick={() => {
+        sound("click");
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        setView("play");
+        requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
+      }} aria-label="Jugar ahora" />
       <button className="home-hot home-hot-prizes" onClick={() => { sound("click"); setView("prizes"); }} aria-label="Ver mis premios" />
       <button
         className={`home-sound-button ${soundOn ? "is-on" : "is-off"}`}
@@ -405,60 +442,64 @@ function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }
     ? (dayOfMonth as 11 | 12 | 13)
     : null;
 
-  // Modo de pruebas: solo fuerza un día si se ha definido expresamente desde desarrollo/admin.
-  const storedTestDay = Number(localStorage.getItem("exclu_test_day"));
-  const forcedTestDay: 11 | 12 | 13 | null = Boolean(status.test_mode) && [11, 12, 13].includes(storedTestDay)
-    ? (storedTestDay as 11 | 12 | 13)
-    : null;
-  const activeDay = forcedTestDay ?? liveFestivalDay;
+  // PRUEBAS: mientras ROULETTE_PREVIEW_ENABLED=true los tres juegos quedan visibles y abiertos.
+  // PRODUCCIÓN: al ponerlo en false, los tres siguen visibles pero solo se desbloquea el que corresponde a su fecha.
+  const testOpenAll = ROULETTE_PREVIEW_ENABLED;
   const gameView: Record<11 | 12 | 13, View> = { 11: "wheel", 12: "quiz", 13: "box" };
 
   const isBeforeFestival = year < 2026 || (year === 2026 && (month < 9 || (month === 9 && dayOfMonth < 11)));
   const isAfterFestival = year > 2026 || (year === 2026 && (month > 9 || (month === 9 && dayOfMonth > 13)));
 
   function dayState(day: 11 | 12 | 13): "done" | "open" | "locked" | "missed" {
-    // En producción, antes del 11 de septiembre TODO el pasaporte permanece bloqueado,
-    // aunque exista información de pruebas previa en Supabase.
-    if (forcedTestDay === null && isBeforeFestival) return "locked";
+    if (testOpenAll) return played.has(day) ? "done" : "open";
     if (played.has(day)) return "done";
-    if (forcedTestDay === day || liveFestivalDay === day) return "open";
-    if (forcedTestDay !== null) return "locked";
+    if (liveFestivalDay === day) return "open";
     if (isAfterFestival || (year === 2026 && month === 9 && dayOfMonth > day)) return "missed";
     return "locked";
   }
 
-  function launchToday() {
-    if (!activeDay && !ROULETTE_PREVIEW_ENABLED) return;
+  function launchDay(day: 11 | 12 | 13) {
+    const state = dayState(day);
+    if (!testOpenAll && state !== "open") return;
+    localStorage.setItem("exclu_test_day", String(day));
     sound("click");
-    setView(activeDay ? gameView[activeDay] : "wheel");
+    setView(gameView[day]);
   }
 
-  const dayLabel = activeDay ? String(activeDay) : "11";
-  const lockedLabel = isAfterFestival ? "FIESTAS FINALIZADAS" : `DISPONIBLE EL ${dayLabel} SEPT`;
+  const games: Array<{day:11|12|13; title:string; text:string; kind:"wheel"|"quiz"|"box"}> = [
+    {day:11,title:"RULETA",text:"Gira la ruleta y gana premios al instante.",kind:"wheel"},
+    {day:12,title:"QUIZ",text:"5 preguntas sobre El Coto. Acierta las 5 para optar a premio.",kind:"quiz"},
+    {day:13,title:"CAJA SORPRESA",text:"Elige una caja y descubre si hoy te toca premio.",kind:"box"},
+  ];
 
-  // Fecha visible de la tarjeta: siempre la fecha REAL de hoy en Europe/Madrid.
-  // No depende del día del festival ni del modo test.
-  const currentMonthLabel = new Intl.DateTimeFormat("es-ES", {
-    timeZone: "Europe/Madrid",
-    month: "short",
-  }).format(new Date()).replace(".", "").toUpperCase();
-
-  return <main className="play-hub-approved play-hub-stable" aria-label="Jugar ahora · La Exclusiva">
+  return <main className="play-hub-approved play-hub-stable play-hub-v185" aria-label="Jugar ahora · La Exclusiva">
     <div className="play-hub-stable__top">
       <img src="/assets/play-hub-top-user.png" alt="EXCLU · La Exclusiva" />
       <button className="play-back-button stable-back" onClick={() => { sound("click"); setView("home"); }} aria-label="Volver a Inicio"><ChevronLeft /></button>
       <button className={`play-sound-hotspot stable-sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2 /> : <VolumeX />}</button>
     </div>
 
-    <section className="stable-card stable-game-card" aria-label="Juego del día">
-      <img src="/assets/game-card-user.png" alt="Ruleta · juego del día" />
-      <div className="stable-current-date" aria-label={`Hoy ${dayOfMonth} ${currentMonthLabel}`}>
-        <span>HOY</span>
-        <strong>{dayOfMonth}</strong>
-        <em>{currentMonthLabel}</em>
-      </div>
-      <button className="stable-game-button" onClick={launchToday} disabled={!activeDay && !ROULETTE_PREVIEW_ENABLED} aria-label={activeDay ? `Jugar al juego del día ${activeDay}` : lockedLabel} />
-      {!activeDay && <div className="stable-game-lock" aria-hidden="true"><LockKeyhole size={16}/><span>{lockedLabel}</span></div>}
+    {testOpenAll && <section className="festival-preview-banner" aria-label="Modo de pruebas activo">
+      <b>MODO PRUEBAS ACTIVO</b><span>Los días 11, 12 y 13 están abiertos para comprobarlos.</span>
+    </section>}
+
+    <section className="daily-games-stack-v187" aria-label="Juegos diarios 11, 12 y 13 de septiembre">
+      <img className="daily-games-stack-v187__art" src="/assets/daily-games-stack-approved.png" alt="Ruleta día 11, Quiz día 12 y Caja Sorpresa día 13" />
+      {games.map((g) => {
+        const state = dayState(g.day);
+        const locked = !testOpenAll && state !== "open";
+        return <Fragment key={g.day}>
+          <button
+            className={`daily-games-stack-v187__hot day-${g.day}`}
+            onClick={() => launchDay(g.day)}
+            disabled={locked}
+            aria-label={locked ? `Disponible el ${g.day} de septiembre` : `Jugar al ${g.title}`}
+          />
+          {locked && <div className={`daily-games-stack-v187__lock day-${g.day}`} aria-hidden="true">
+            <LockKeyhole size={15}/><span>{state === "missed" ? "FINALIZADO" : `DISPONIBLE EL ${g.day} SEPT`}</span>
+          </div>}
+        </Fragment>;
+      })}
     </section>
 
     <section className="stable-card stable-passport-card" aria-label="Tu Pasaporte">
@@ -479,19 +520,27 @@ function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }
   </main>;
 }
 
-function GamesHub({ setView }: { setView: (v: View) => void }) {
-  const games: Array<{view: View; icon:string; title:string; text:string; featured?:boolean}> = [
-    {view:"fly", icon:"🚀", title:"EXCLU Vuela", text:"Vuela, esquiva obstáculos y supera tu récord.", featured:true},
-    {view:"scratch", icon:"🪙", title:"Rasca EXCLU", text:"Rasca la tarjeta y descubre el mensaje de EXCLU."},
-    {view:"find", icon:"🤖", title:"Encuentra a EXCLU", text:"Encuentra al robot escondido antes de que se acabe el tiempo."},
-    {view:"memory", icon:"🧠", title:"Memoria EXCLU", text:"Encuentra todas las parejas en el menor número de movimientos."},
-    {view:"rings", icon:"⭕", title:"Lanza Aros", text:"Afina la puntería y consigue la máxima puntuación."},
+function GamesHub({ setView, soundOn, photoCount, onToggleSound }: { setView: (v: View) => void; soundOn: boolean; photoCount: number; onToggleSound: () => void }) {
+  const go = (view: View) => { sound("click"); setView(view); window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); };
+  const games = [
+    { view: "rosco" as View, cls: "rosco", title: "ROSCO DEL COTO", sub: "Pon a prueba tus conocimientos en un rosco completo de 27 letras.", img: "/assets/games-v255/rosco.webp" },
+    { view: "memory" as View, cls: "memory", title: "MEMORIA EXCLU", sub: "Encuentra todas las parejas y entrena tu memoria.", img: "/assets/games-v255/memory.webp" },
+    { view: "puzzle" as View, cls: "puzzle", title: "PUZZLE EXCLU", sub: "Une las piezas y completa la imagen.", img: "/assets/games-v255/puzzle.webp" },
   ];
-  return <section className="games-hub">
-    <div className="play-brand compact"><img src="/assets/logo-la-exclusiva-approved.png" alt="La Exclusiva Cafetería" /></div>
-    <div className="games-title"><Gamepad2/><div><span>JUEGOS</span><h1>EXCLU GAMES</h1><p>Diviértete y supera tus propios récords.</p></div></div>
-    <div className="games-grid">{games.map(g=><button key={g.view} className={g.featured?"featured":""} onClick={()=>{sound("click");setView(g.view)}}><span className="games-icon">{g.icon}</span><div><b>{g.title}</b><small>{g.text}</small></div><strong>›</strong></button>)}</div>
-    <p className="games-note">Los juegos son de habilidad y diversión. Los premios reales están ligados a la participación diaria.</p>
+  return <section className="games-v255" aria-label="EXCLU Games">
+    <div className="games-v255__hero-wrap">
+      <img className="games-v255__hero" src="/assets/games-v255/hero.webp" alt="EXCLU Games · elige un juego" />
+      <button className="games-v255__back" onClick={() => go("home")} aria-label="Volver a Inicio"><ChevronLeft/></button>
+      <button className={`games-v255__sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2/> : <VolumeX/>}</button>
+    </div>
+    <div className="games-v255__list">
+      {games.map((game) => <button key={game.view} className={`games-v255__card ${game.cls}`} onClick={() => go(game.view)}>
+        <span className="games-v255__art"><img src={game.img} alt="" /></span>
+        <span className="games-v255__copy"><strong>{game.title}</strong><small>{game.sub}</small></span>
+        <span className="games-v255__play">JUGAR <b>›</b></span>
+      </button>)}
+    </div>
+    <BottomNav view="games" setView={setView} photoCount={photoCount}/>
   </section>;
 }
 
@@ -558,7 +607,7 @@ function ExcluFly(){
   },[running,best]);
   return <Card tone="purple" tag="EXCLU JUEGOS · JUEGO ESTRELLA" title="EXCLU VUELA" sub="Toca la pantalla para volar, esquiva obstáculos y recoge estrellas hasta llegar al Cofre EXCLU">
     <div className="fly-hud"><span>🚀 {distance} m</span><span>⭐ {collected}</span><span>🏆 Récord {best}</span></div>
-    <div className="fly-stage" onPointerDown={flap}><canvas ref={canvasRef} width={720} height={460}/>{!running&&!finished&&<div className="fly-overlay"><img src="/assets/exclu-robot-premium.png"/><h2>¿LISTO PARA VOLAR?</h2><p>Llega a 1.000 m y abre el Cofre EXCLU.</p><button onClick={(e)=>{e.stopPropagation();start()}}>JUGAR AHORA</button></div>}{finished&&<div className="fly-overlay result-mini"><h2>{distance>=1000?"¡META CONSEGUIDA!":"¡CASI!"}</h2><p>{chest||`Has llegado a ${distance} m y recogido ${collected} estrellas.`}</p><button onClick={(e)=>{e.stopPropagation();start()}}>VOLVER A INTENTAR</button></div>}</div>
+    <div className="fly-stage" onPointerDown={flap}><canvas ref={canvasRef} width={720} height={460}/>{!running&&!finished&&<div className="fly-overlay"><img src="/assets/exclu-approved-photobooth.png"/><h2>¿LISTO PARA VOLAR?</h2><p>Llega a 1.000 m y abre el Cofre EXCLU.</p><button onClick={(e)=>{e.stopPropagation();start()}}>JUGAR AHORA</button></div>}{finished&&<div className="fly-overlay result-mini"><h2>{distance>=1000?"¡META CONSEGUIDA!":"¡CASI!"}</h2><p>{chest||`Has llegado a ${distance} m y recogido ${collected} estrellas.`}</p><button onClick={(e)=>{e.stopPropagation();start()}}>VOLVER A INTENTAR</button></div>}</div>
     <div className="fly-progress"><i style={{width:`${Math.min(100,distance/10)}%`}}/><span>🏁 1.000 m</span></div>
   </Card>
 }
@@ -574,12 +623,110 @@ function drawFly(ctx:CanvasRenderingContext2D,c:HTMLCanvasElement,st:any){
   ctx.save();ctx.translate(125,st.y);ctx.rotate(Math.max(-.45,Math.min(.55,st.vy*.05)));ctx.fillStyle="#fff0d2";ctx.strokeStyle="#ffb43e";ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-28,-24,56,48,18);ctx.fill();ctx.stroke();ctx.fillStyle="#071218";ctx.beginPath();ctx.roundRect(-20,-15,40,28,10);ctx.fill();ctx.fillStyle="#58fff1";ctx.beginPath();ctx.arc(-8,-3,5,0,7);ctx.arc(8,-3,5,0,7);ctx.fill();ctx.strokeStyle="#58fff1";ctx.beginPath();ctx.arc(0,4,8,.2,2.9);ctx.stroke();ctx.fillStyle="#ff8a2b";ctx.beginPath();ctx.moveTo(-32,10);ctx.lineTo(-52,20);ctx.lineTo(-30,26);ctx.fill();ctx.restore();
 }
 
-function MemoryExclu(){
-  const symbols=["🤖","☕","🥐","🎉","⭐","🎁"];const [deck,setDeck]=useState(()=>shuffle([...symbols,...symbols]));const [open,setOpen]=useState<number[]>([]);const [matched,setMatched]=useState<number[]>([]);const [moves,setMoves]=useState(0);
-  function restart(){setDeck(shuffle([...symbols,...symbols]));setOpen([]);setMatched([]);setMoves(0)}
-  function flip(i:number){if(open.length===2||open.includes(i)||matched.includes(i))return;const next=[...open,i];setOpen(next);sound("click");if(next.length===2){setMoves(m=>m+1);if(deck[next[0]]===deck[next[1]]){setMatched(m=>[...m,...next]);setOpen([]);sound("correct")}else setTimeout(()=>{setOpen([]);sound("wrong")},650)}}
-  const done=matched.length===deck.length;
-  return <Card tone="teal" tag="EXCLU JUEGOS" title="MEMORIA EXCLU" sub="Encuentra las parejas con el menor número de movimientos"><div className="memory-top"><b>{moves} movimientos</b>{done&&<strong>✨ ¡COLECCIÓN COMPLETA!</strong>}</div><div className="memory-grid">{deck.map((x,i)=><button key={i} onClick={()=>flip(i)} className={open.includes(i)||matched.includes(i)?"open":""}>{open.includes(i)||matched.includes(i)?x:"✦"}</button>)}</div><button className="teal" onClick={restart}>NUEVA PARTIDA</button></Card>
+type MemoryCard = { id:string; image:string };
+const MEMORY_LIBRARY: MemoryCard[] = [
+  {id:"excu",image:"/assets/memory-cards-v225/excu.webp"},
+  {id:"cafe",image:"/assets/memory-cards-v225/cafe.webp"},
+  {id:"sidra",image:"/assets/memory-cards-v225/sidra.webp"},
+  {id:"regalo",image:"/assets/memory-cards-v225/regalo.webp"},
+  {id:"camara",image:"/assets/memory-cards-v225/camara.webp"},
+  {id:"asturias",image:"/assets/memory-cards-v225/asturias.webp"},
+  {id:"fiesta",image:"/assets/memory-cards-v225/fiesta.webp"},
+  {id:"tapas",image:"/assets/memory-cards-v225/tapas.webp"},
+  {id:"costa",image:"/assets/memory-cards-v225/costa.webp"},
+  {id:"brindis",image:"/assets/memory-cards-v225/brindis.webp"},
+  {id:"pasaporte",image:"/assets/memory-cards-v225/pasaporte.webp"},
+  {id:"musica",image:"/assets/memory-cards-v225/musica.webp"},
+];
+
+function MemoryExclu({ setView, userId, soundOn, onToggleSound, photoCount }:{ setView:(v:View)=>void; userId:string|null; soundOn:boolean; onToggleSound:()=>void; photoCount:number }){
+  // Cada partida usa 6 imágenes diferentes de una biblioteca de 12. EXCLU siempre participa.
+  // Las 6 elegidas se duplican: siguen siendo siempre 6 parejas / 12 cartas.
+  const makeDeck=()=>{
+    const excu=MEMORY_LIBRARY.find(c=>c.id==="excu")!;
+    const others=shuffle(MEMORY_LIBRARY.filter(c=>c.id!=="excu").slice()).slice(0,5);
+    const chosen=shuffle([excu,...others]);
+    return shuffle(chosen.flatMap((c)=>[
+      {...c,uid:`${c.id}-a-${Math.random()}`},
+      {...c,uid:`${c.id}-b-${Math.random()}`}
+    ])) as Array<MemoryCard & {uid:string}>;
+  };
+  const [deck,setDeck]=useState(()=>makeDeck());
+  const [open,setOpen]=useState<number[]>([]);
+  const [matched,setMatched]=useState<number[]>([]);
+  const [moves,setMoves]=useState(0);
+  const [seconds,setSeconds]=useState(0);
+  const [running,setRunning]=useState(false);
+  const [finished,setFinished]=useState(false);
+  const [bestMoves,setBestMoves]=useState<number|null>(null);
+  const [bestTime,setBestTime]=useState<number|null>(null);
+
+  const fmt=(n:number|null)=>n==null?"--:--":`${String(Math.floor(n/60)).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
+
+  useEffect(()=>{
+    let cancelled=false;
+    async function loadBest(){
+      if(!userId)return;
+      try{
+        const {data}=await supabase.from("minigame_records").select("best_score,best_time_seconds").eq("user_id",userId).eq("game_key","memory").maybeSingle();
+        if(cancelled||!data)return;
+        const score=Number(data.best_score||0);
+        if(score>0)setBestMoves(Math.max(0,1000-score));
+        if(data.best_time_seconds!=null)setBestTime(Number(data.best_time_seconds));
+      }catch{}
+    }
+    loadBest();
+    return()=>{cancelled=true};
+  },[userId]);
+
+  useEffect(()=>{
+    if(!running||finished)return;
+    const id=window.setInterval(()=>setSeconds(s=>s+1),1000);
+    return()=>window.clearInterval(id);
+  },[running,finished]);
+
+  async function saveRecord(finalMoves:number,finalSeconds:number){
+    const previousMoves=bestMoves;
+    const isBetter=previousMoves==null||finalMoves<previousMoves||(finalMoves===previousMoves&&(bestTime==null||finalSeconds<bestTime));
+    if(isBetter){setBestMoves(finalMoves);setBestTime(finalSeconds)}
+    if(!userId)return;
+    try{await supabase.rpc("save_minigame_record",{p_game_key:"memory",p_score:Math.max(1,1000-finalMoves),p_time_seconds:finalSeconds})}
+    catch(e){console.warn("No se pudo guardar récord de Memoria EXCLU",e)}
+  }
+
+  function restart(){setDeck(makeDeck());setOpen([]);setMatched([]);setMoves(0);setSeconds(0);setRunning(false);setFinished(false);sound("click")}
+
+  function flip(i:number){
+    if(finished||open.length===2||open.includes(i)||matched.includes(i))return;
+    if(!running)setRunning(true);
+    const next=[...open,i];setOpen(next);sound("click");
+    if(next.length===2){
+      const nextMoves=moves+1;setMoves(nextMoves);
+      if(deck[next[0]].id===deck[next[1]].id){
+        const nextMatched=[...matched,...next];setMatched(nextMatched);setOpen([]);sound("correct");
+        if(nextMatched.length===deck.length){setFinished(true);setRunning(false);sound("win");void saveRecord(nextMoves,seconds)}
+      }else window.setTimeout(()=>{setOpen([]);sound("wrong")},700);
+    }
+  }
+
+  const cardPos=[[8.5,36.7],[29.7,36.7],[50.8,36.7],[71.7,36.7],[8.5,50.2],[29.7,50.2],[50.8,50.2],[71.7,50.2],[8.5,63.9],[29.7,63.9],[50.8,63.9],[71.7,63.9]];
+  const go=(v:View)=>{sound("click");setView(v);window.scrollTo({top:0,behavior:"smooth"})};
+
+  return <main className="memory-v224" aria-label="Memoria EXCLU"><section className="memory-v224__canvas">
+    <img className="memory-v224__art" src="/assets/memory-exclu-approved-v224.png" alt="Memoria EXCLU"/>
+    <button className="memory-v224__hot back" onClick={()=>go("games")} aria-label="Volver a EXCLU GAMES"/>
+    <button className="memory-v224__hot sound" onClick={onToggleSound} aria-label={soundOn?"Desactivar sonido":"Activar sonido"}/>
+    {!soundOn&&<span className="memory-v224__sound-off" aria-hidden="true"><VolumeX/></span>}
+    <div className="memory-v224__stat time">{fmt(seconds)}</div>
+    <div className="memory-v224__stat moves">{moves}</div>
+    <div className="memory-v224__stat record"><b>{bestMoves==null?"-- mov.":`${bestMoves} mov.`}</b><small>{fmt(bestTime)}</small></div>
+    {deck.map((card,i)=>{const visible=open.includes(i)||matched.includes(i);const isMatched=matched.includes(i);const [x,y]=cardPos[i];return <button key={card.uid} className={`memory-v224__card ${visible?"is-open":""} ${isMatched?"is-matched":""}`} style={{left:`${x}%`,top:`${y}%`}} onClick={()=>flip(i)} aria-label={visible?"Carta descubierta":"Carta oculta"}>
+      {visible&&<span className="memory-v224__face"><img className="memory-v224__photo" src={card.image} alt=""/></span>}
+    </button>})}
+    {finished&&<div className="memory-v224__done"><strong>✨ ¡TODAS LAS PAREJAS!</strong><span>{moves} movimientos · {fmt(seconds)}</span></div>}
+    <button className="memory-v224__hot restart" onClick={restart} aria-label={finished?"Jugar otra vez":"Nueva partida"}/>
+    <button className="memory-v224__hot nav-home" onClick={()=>go("home")} aria-label="Inicio"/><button className="memory-v224__hot nav-passport" onClick={()=>go("passport")} aria-label="Pasaporte"/><button className="memory-v224__hot nav-games" onClick={()=>go("games")} aria-label="Juegos"/><button className="memory-v224__hot nav-photo" onClick={()=>go("photo")} aria-label="Fotomatón"/>
+  </section></main>;
 }
 function shuffle<T>(a:T[]){return a.sort(()=>Math.random()-.5)}
 
@@ -593,12 +740,494 @@ function RingToss(){
 function FindExclu(){
  const [round,setRound]=useState(0); const [found,setFound]=useState(false); const pos=[12,68,35,80,48][round%5];
  function hit(){setFound(true);sound("win");setTimeout(()=>{setFound(false);setRound(r=>r+1)},1100)}
- return <Card tone="orange" tag="EXCLU JUEGOS" title="¿DÓNDE ESTÁ EXCLU?" sub="Encuentra al robot escondido entre la fiesta"><div className="find-stage">{Array.from({length:18}).map((_,i)=><span key={i} className="crowd">{["🥳","🎉","🍻","🎺","🕺","💃"][i%6]}</span>)}<button className={`hidden-exclu ${found?"found":""}`} onClick={hit} style={{left:`${pos}%`,top:`${22+(round*17)%55}%`}}><img src="/assets/exclu-robot-premium.png" alt="Encuentra a EXCLU"/></button>{found&&<strong>¡ENCONTRADO! 🤖✨</strong>}</div><p className="game-hint"><Search size={16}/> Ronda {round+1} · toca al robot cuando lo veas</p></Card>
+ return <Card tone="orange" tag="EXCLU JUEGOS" title="¿DÓNDE ESTÁ EXCLU?" sub="Encuentra al robot escondido entre la fiesta"><div className="find-stage">{Array.from({length:18}).map((_,i)=><span key={i} className="crowd">{["🥳","🎉","🍻","🎺","🕺","💃"][i%6]}</span>)}<button className={`hidden-exclu ${found?"found":""}`} onClick={hit} style={{left:`${pos}%`,top:`${22+(round*17)%55}%`}}><img src="/assets/exclu-approved-photobooth.png" alt="Encuentra a EXCLU"/></button>{found&&<strong>¡ENCONTRADO! 🤖✨</strong>}</div><p className="game-hint"><Search size={16}/> Ronda {round+1} · toca al robot cuando lo veas</p></Card>
+}
+
+
+type RoscoState = "pending" | "active" | "ok" | "bad" | "pass";
+type RoscoQuestion = { q: string; a: string; mode?: "starts" | "contains" };
+const ROSCO_LETTERS = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","Ñ","O","P","Q","R","S","T","U","V","W","X","Y","Z"] as const;
+const ROSCO_BANK: Record<string, RoscoQuestion[]> = {
+  A:[{q:"Con A: comunidad autónoma del norte de España cuya capital es Oviedo.",a:"Asturias"},{q:"Con A: momento en que empieza a salir el sol.",a:"amanecer"}],
+  B:[{q:"Con B: zona de una ciudad con identidad y vida vecinal propia.",a:"barrio"},{q:"Con B: lugar donde se prestan y consultan libros.",a:"biblioteca"}],
+  C:[{q:"Con C: bebida preparada con granos tostados y agua caliente.",a:"cafe"},{q:"Con C: conjunto de conocimientos, costumbres y expresiones de una sociedad.",a:"cultura"}],
+  D:[{q:"Con D: comida que se toma normalmente al empezar el día.",a:"desayuno"},{q:"Con D: entretenimiento o pasatiempo que produce alegría.",a:"diversion"}],
+  E:[{q:"Con E: lugar al que van los niños y jóvenes para aprender.",a:"escuela"},{q:"Con E: astro que vemos como un punto luminoso en el cielo nocturno.",a:"estrella"}],
+  F:[{q:"Con F: celebración popular con música, gente y actividades.",a:"fiesta"},{q:"Con F: arte y técnica de obtener imágenes con una cámara.",a:"fotografia"}],
+  G:[{q:"Con G: ciudad asturiana donde está El Coto.",a:"Gijon"},{q:"Con G: acción de conseguir la victoria en un juego.",a:"ganar"}],
+  H:[{q:"Con H: relato de los acontecimientos del pasado.",a:"historia"},{q:"Con H: unidad de tiempo equivalente a sesenta minutos.",a:"hora"}],
+  I:[{q:"Con I: dibujo pequeño que representa una app o función en pantalla.",a:"icono"},{q:"Con I: representación visual captada o creada de algo.",a:"imagen"}],
+  J:[{q:"Con J: actividad con reglas que hacemos para divertirnos.",a:"juego"},{q:"Con J: acción de participar en un juego.",a:"jugar"}],
+  K:[{q:"Con K: unidad de medida equivalente a mil gramos.",a:"kilo"},{q:"Con K: arte marcial japonés de golpes y patadas.",a:"karate"}],
+  L:[{q:"Con L: satélite natural de la Tierra visible por la noche.",a:"luna"},{q:"Con L: conjunto de hojas encuadernadas para leer.",a:"libro"}],
+  M:[{q:"Con M: capacidad de recordar información.",a:"memoria"},{q:"Con M: dispositivo que usamos para llamar y navegar por internet.",a:"movil"}],
+  N:[{q:"Con N: parte del día comprendida entre el atardecer y el amanecer.",a:"noche"},{q:"Con N: cifra que usamos para contar.",a:"numero"}],
+  Ñ:[{q:"Contiene la Ñ: fruto del castaño muy típico del otoño.",a:"castaña",mode:"contains"},{q:"Contiene la Ñ: período de doce meses.",a:"año",mode:"contains"}],
+  O:[{q:"Con O: ciudad capital de Asturias.",a:"Oviedo"},{q:"Con O: algo que aparece en el camino y hay que esquivar en un juego.",a:"obstaculo"}],
+  P:[{q:"Con P: galardón o recompensa que se puede ganar.",a:"premio"},{q:"Con P: documento de viaje que inspira el pasaporte de la app.",a:"pasaporte"}],
+  Q:[{q:"Con Q: alimento elaborado a partir de leche cuajada.",a:"queso"},{q:"Con Q: palabra inglesa que usamos para un juego de preguntas.",a:"quiz"}],
+  R:[{q:"Con R: mejor puntuación conseguida hasta el momento.",a:"record"},{q:"Con R: juego circular que gira para decidir un resultado.",a:"ruleta"}],
+  S:[{q:"Con S: bebida asturiana obtenida de la manzana.",a:"sidra"},{q:"Con S: resultado de un sorteo cuando la fortuna te favorece.",a:"suerte"}],
+  T:[{q:"Con T: dispositivo móvil de pantalla táctil mayor que un teléfono.",a:"tablet"},{q:"Con T: cantidad que mide cuánto dura algo.",a:"tiempo"}],
+  U:[{q:"Con U: persona que utiliza una aplicación o servicio.",a:"usuario"},{q:"Con U: palabra que significa que no hay otro igual.",a:"unico"}],
+  V:[{q:"Con V: desplazarse por el aire como un pájaro.",a:"volar"},{q:"Con V: persona que gana una competición.",a:"vencedor"}],
+  W:[{q:"Con W: red mundial de páginas de internet.",a:"web"},{q:"Con W: conexión inalámbrica usada para acceder a internet.",a:"wifi"}],
+  X:[{q:"Contiene la X: palabra que significa especial o reservado para pocos.",a:"exclusivo",mode:"contains"},{q:"Contiene la X: acción de recorrer o investigar un lugar para conocerlo.",a:"explorar",mode:"contains"}],
+  Y:[{q:"Con Y: parte amarilla del huevo.",a:"yema"},{q:"Con Y: embarcación de recreo de lujo.",a:"yate"}],
+  Z:[{q:"Con Z: calzado deportivo.",a:"zapatilla"},{q:"Con Z: animal asturiano de monte también llamado raposo.",a:"zorro"}],
+};
+
+// v222: banco ampliado y variado, estilo Pasapalabra. Se mezcla en cada partida.
+const ROSCO_EXTRA: Record<string, RoscoQuestion[]> = {
+ A:[{q:"Con A: pintor renacentista autor de La escuela de Atenas.",a:"Rafael",mode:"contains"},{q:"Con A: selección que ganó el Mundial de fútbol de 2022.",a:"Argentina"}],
+ B:[{q:"Con B: compositor alemán de la Novena Sinfonía.",a:"Beethoven"},{q:"Con B: deporte en el que se encestan balones en una canasta.",a:"baloncesto"}],
+ C:[{q:"Con C: autor de Don Quijote de la Mancha.",a:"Cervantes"},{q:"Con C: equipo de fútbol londinense que juega en Stamford Bridge.",a:"Chelsea"}],
+ D:[{q:"Con D: pintor español asociado al surrealismo y a los relojes blandos.",a:"Dali"},{q:"Con D: capital de Irlanda.",a:"Dublin"}],
+ E:[{q:"Con E: país africano de las pirámides de Guiza.",a:"Egipto"},{q:"Con E: competición europea de selecciones que España ganó en 2024.",a:"Eurocopa"}],
+ F:[{q:"Con F: artista español autor de La maja desnuda.",a:"Francisco de Goya"},{q:"Con F: ciudad italiana considerada cuna del Renacimiento.",a:"Florencia"}],
+ G:[{q:"Con G: pintor de El entierro del conde de Orgaz, conocido como El...",a:"Greco"},{q:"Con G: torneo ciclista de tres semanas que se disputa en Italia.",a:"Giro"}],
+ H:[{q:"Con H: héroe mitológico griego famoso por sus doce trabajos.",a:"Heracles"},{q:"Con H: país europeo cuya capital es Budapest.",a:"Hungria"}],
+ I:[{q:"Con I: país cuya capital es Reikiavik.",a:"Islandia"},{q:"Con I: club italiano de fútbol de Milán cuyo nombre completo comienza por Internazionale.",a:"Inter"}],
+ J:[{q:"Con J: deporte olímpico de combate originario de Japón.",a:"judo"},{q:"Con J: ciudad andaluza famosa por su circuito de motociclismo.",a:"Jerez"}],
+ K:[{q:"Con K: delantero francés ganador del Mundial de 2018, Kylian...",a:"Mbappe",mode:"contains"},{q:"Con K: ciudad japonesa antigua capital imperial y famosa por sus templos.",a:"Kioto"}],
+ L:[{q:"Con L: museo parisino donde se expone la Mona Lisa.",a:"Louvre"},{q:"Con L: ciudad inglesa asociada a The Beatles.",a:"Liverpool"}],
+ M:[{q:"Con M: artista renacentista que pintó la bóveda de la Capilla Sixtina.",a:"Miguel Angel"},{q:"Con M: capital de la Comunidad de Madrid y de España.",a:"Madrid"}],
+ N:[{q:"Con N: ciudad italiana situada a los pies del Vesubio.",a:"Napoles"},{q:"Con N: tenista español ganador de 14 Roland Garros, Rafael...",a:"Nadal"}],
+ Ñ:[{q:"Contiene la Ñ: país europeo cuya capital es Madrid.",a:"España",mode:"contains"},{q:"Contiene la Ñ: competición deportiva que se celebra cada cuatro años y reúne a selecciones nacionales de fútbol.",a:"mundial",mode:"contains"}],
+ O:[{q:"Con O: apellido del escritor británico autor de 1984.",a:"Orwell"},{q:"Con O: deporte de atletismo en el que se superan vallas y una barra con una pértiga.",a:"obstaculos"}],
+ P:[{q:"Con P: pintor malagueño cofundador del cubismo.",a:"Picasso"},{q:"Con P: capital de Francia.",a:"Paris"}],
+ Q:[{q:"Con Q: personaje de Cervantes que acompaña a Sancho Panza en el título de la novela, Don...",a:"Quijote"},{q:"Con Q: país cuya capital es Doha.",a:"Qatar"}],
+ R:[{q:"Con R: competición de tenis sobre tierra batida que se disputa en París, Roland...",a:"Garros",mode:"contains"},{q:"Con R: capital de Italia.",a:"Roma"}],
+ S:[{q:"Con S: pintor sevillano autor de Las meninas, Diego Velázquez nació en esta ciudad.",a:"Sevilla"},{q:"Con S: club de fútbol de San Sebastián conocido como la Real...",a:"Sociedad"}],
+ T:[{q:"Con T: capital de Japón.",a:"Tokio"},{q:"Con T: museo londinense de arte moderno situado junto al Támesis, Tate...",a:"Tate"}],
+ U:[{q:"Con U: país sudamericano cuya capital es Montevideo.",a:"Uruguay"},{q:"Con U: organismo europeo de fútbol que organiza la Champions League.",a:"UEFA"}],
+ V:[{q:"Con V: pintor neerlandés autor de La noche estrellada, Vincent van...",a:"Gogh",mode:"contains"},{q:"Con V: ciudad italiana construida sobre canales.",a:"Venecia"}],
+ W:[{q:"Con W: torneo de tenis sobre hierba disputado en Londres.",a:"Wimbledon"},{q:"Con W: compositor alemán de óperas como Tristán e Isolda, Richard...",a:"Wagner"}],
+ X:[{q:"Contiene la X: instrumento musical de láminas que se golpean con baquetas.",a:"xilofono",mode:"contains"},{q:"Contiene la X: deporte de combate en el que se golpea con guantes dentro de un ring.",a:"boxeo",mode:"contains"}],
+ Y:[{q:"Con Y: ciudad estadounidense famosa por el parque nacional de Yellowstone; contiene esta letra.",a:"Yellowstone"},{q:"Con Y: estilo de yoga dinámico que enlaza posturas con la respiración; contiene la Y.",a:"yoga"}],
+ Z:[{q:"Con Z: ciudad española capital de Aragón.",a:"Zaragoza"},{q:"Con Z: futbolista francés ganador del Balón de Oro en 1998, Zinedine...",a:"Zidane"}],
+};
+Object.entries(ROSCO_EXTRA).forEach(([letter,items])=>{ ROSCO_BANK[letter]=[...(ROSCO_BANK[letter]||[]),...items]; });
+
+function normalizeRosco(v:string){return v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/[^a-z0-9ñ ]/g,"").replace(/\s+/g," ")}
+function buildRoscoQuestions(){
+  return Object.fromEntries(ROSCO_LETTERS.map(letter=>{const list=ROSCO_BANK[letter]||[];return [letter,list[Math.floor(Math.random()*Math.max(1,list.length))]||{q:`Con ${letter}: responde correctamente.`,a:letter}] })) as Record<string,RoscoQuestion>;
+}
+
+function RoscoCoto({ setView, userId, soundOn, onToggleSound }: { setView:(v:View)=>void; userId:string|null; soundOn:boolean; onToggleSound:()=>void }){
+  const [questions,setQuestions]=useState<Record<string,RoscoQuestion>>(()=>buildRoscoQuestions());
+  const [states,setStates]=useState<Record<string,RoscoState>>(()=>Object.fromEntries(ROSCO_LETTERS.map(l=>[l,"pending"])));
+  const [queue,setQueue]=useState<string[]>(()=>[...ROSCO_LETTERS]);
+  const [current,setCurrent]=useState(ROSCO_LETTERS[0] as string);
+  const [value,setValue]=useState("");
+  const [seconds,setSeconds]=useState(0);
+  const [running,setRunning]=useState(true);
+  const [done,setDone]=useState(false);
+  const [feedback,setFeedback]=useState<"ok"|"bad"|null>(null);
+  const [record,setRecord]=useState(()=>{
+    try {
+      const raw=localStorage.getItem("exclu_records_rosco");
+      if(raw) return JSON.parse(raw) as {bestScore:number;bestTime:number|null;lastScore:number;lastTime:number};
+    } catch {}
+    const legacy=Number(localStorage.getItem("exclu_rosco_best")||0);
+    return {bestScore:legacy,bestTime:null,lastScore:0,lastTime:0};
+  });
+  const inputRef=useRef<HTMLInputElement|null>(null);
+
+  // v222: el récord se sincroniza con Supabase por participante autenticado.
+  useEffect(()=>{
+    if(!userId) return;
+    let alive=true;
+    (async()=>{
+      const {data,error}=await supabase.from("minigame_records")
+        .select("best_score,best_time_seconds,last_score,last_time_seconds")
+        .eq("user_id",userId).eq("game_key","rosco_coto").maybeSingle();
+      if(!alive||error||!data) return;
+      const remote={bestScore:Number(data.best_score||0),bestTime:data.best_time_seconds==null?null:Number(data.best_time_seconds),lastScore:Number(data.last_score||0),lastTime:Number(data.last_time_seconds||0)};
+      setRecord(remote);
+      localStorage.setItem("exclu_records_rosco",JSON.stringify(remote));
+    })();
+    return()=>{alive=false};
+  },[userId]);
+
+  async function saveRoscoRecord(score:number,time:number){
+    if(!userId) return;
+    const {error}=await supabase.rpc("save_minigame_record",{p_game_key:"rosco_coto",p_score:score,p_time_seconds:time});
+    if(error) console.warn("No se pudo guardar el récord del Rosco en Supabase",error);
+  }
+
+  const correct=Object.values(states).filter(v=>v==="ok").length;
+  const wrong=Object.values(states).filter(v=>v==="bad").length;
+  const pending=27-correct-wrong;
+  const question=questions[current];
+
+  useEffect(()=>{
+    if(!running||done)return;
+    const t=window.setInterval(()=>setSeconds(s=>s+1),1000);
+    return()=>window.clearInterval(t);
+  },[running,done]);
+
+  useEffect(()=>{ if(!done) setTimeout(()=>inputRef.current?.focus(),60); },[current,done]);
+
+  function finish(nextStates:Record<string,RoscoState>){
+    const score=Object.values(nextStates).filter(v=>v==="ok").length;
+    setRunning(false);setDone(true);
+    const previous=record;
+    const isBetter = score > previous.bestScore || (score === previous.bestScore && (previous.bestTime == null || seconds < previous.bestTime));
+    const nextRecord = {
+      bestScore: isBetter ? score : previous.bestScore,
+      bestTime: isBetter ? seconds : previous.bestTime,
+      lastScore: score,
+      lastTime: seconds,
+    };
+    setRecord(nextRecord);
+    localStorage.setItem("exclu_records_rosco", JSON.stringify(nextRecord));
+    localStorage.setItem("exclu_rosco_best", String(nextRecord.bestScore));
+    void saveRoscoRecord(score, seconds);
+    if(isBetter) sound("win");
+  }
+
+  function advance(nextStates:Record<string,RoscoState>, nextQueue:string[]){
+    const unresolved=nextQueue.filter(l=>nextStates[l]!=="ok"&&nextStates[l]!=="bad");
+    if(unresolved.length===0){finish(nextStates);return}
+    const next=unresolved[0];
+    setQueue(unresolved);
+    setCurrent(next);
+    setStates({...nextStates,[next]:"active"});
+    setValue("");
+    setFeedback(null);
+  }
+
+  useEffect(()=>{setStates(s=>({...s,[current]:"active"}))},[]);
+
+  function answer(){
+    if(done||feedback||!value.trim())return;
+    const ok=normalizeRosco(value)===normalizeRosco(question.a);
+    const nextStates={...states,[current]:ok?"ok":"bad" as RoscoState};
+    setStates(nextStates);setFeedback(ok?"ok":"bad");sound(ok?"correct":"wrong");
+    const nextQueue=queue.filter(l=>l!==current);
+    window.setTimeout(()=>advance(nextStates,nextQueue),900);
+  }
+
+  function pass(){
+    if(done||feedback)return;
+    sound("click");
+    const nextStates={...states,[current]:"pass" as RoscoState};
+    setStates(nextStates);
+    const nextQueue=[...queue.filter(l=>l!==current),current];
+    const next=nextQueue.find(l=>l!==current && nextStates[l]!=="ok"&&nextStates[l]!=="bad");
+    if(!next){setStates({...nextStates,[current]:"active"});return}
+    setQueue(nextQueue);setCurrent(next);setStates({...nextStates,[next]:"active"});setValue("");
+  }
+
+  function restart(){
+    const qs=buildRoscoQuestions();
+    const st=Object.fromEntries(ROSCO_LETTERS.map(l=>[l,"pending"])) as Record<string,RoscoState>;
+    st[ROSCO_LETTERS[0]]="active";
+    setQuestions(qs);setStates(st);setQueue([...ROSCO_LETTERS]);setCurrent(ROSCO_LETTERS[0]);setValue("");setSeconds(0);setRunning(true);setDone(false);setFeedback(null);sound("click");
+  }
+
+  function go(v:View){sound("click");setView(v);window.scrollTo({top:0,behavior:"instant" as ScrollBehavior})}
+  const mm=String(Math.floor(seconds/60)).padStart(2,"0"), ss=String(seconds%60).padStart(2,"0");
+  const bestTimeLabel = record.bestTime == null ? "--:--" : `${String(Math.floor(record.bestTime/60)).padStart(2,"0")}:${String(record.bestTime%60).padStart(2,"0")}`;
+
+  return <section className="rosco-v212" aria-label="Rosco del Coto">
+    <div className="rosco-v212__shell">
+      <div className="rosco-v212__top">
+        <img className="rosco-v212__art" src="/assets/rosco-coto-top-v213.png" alt="Rosco del Coto · La Exclusiva" />
+        <div className="rosco-v212__logo"><img src="/assets/logo-la-exclusiva-full-approved.png" alt="La Exclusiva Cafetería" /></div>
+        <button className="rosco-v212__back" onClick={()=>go("games")} aria-label="Volver a EXCLU Games"><ChevronLeft/> <span>Volver</span></button>
+        <button className={`rosco-v212__sound ${soundOn?"is-on":"is-off"}`} onClick={onToggleSound} aria-label={soundOn?"Desactivar sonido":"Activar sonido"}>{soundOn?<Volume2/>:<VolumeX/>}</button>
+
+        <div className="rosco-v212__time"><small>TIEMPO</small><b>{mm}:{ss}</b></div>
+        <div className="rosco-v212__score hits"><small>ACIERTOS</small><b>{correct}</b></div>
+        <div className="rosco-v212__score misses"><small>FALLOS</small><b>{wrong}</b></div>
+        <div className="rosco-v212__score pending"><small>PEND.</small><b>{pending}</b></div>
+        <div className="rosco-v212__record"><small>RÉCORD</small><b>{record.bestScore}/27</b><em>{bestTimeLabel}</em></div>
+        <div className="rosco-v212__progress"><small>PREGUNTA</small><b>{Math.min(27,correct+wrong+1)}/27</b></div>
+
+        <div className="rosco-v212__ring" aria-label="Estado del rosco">
+          {ROSCO_LETTERS.map((l,i)=>{
+            const angle=(i/ROSCO_LETTERS.length)*Math.PI*2-Math.PI/2;
+            const x=49.50+27.25*Math.cos(angle);
+            const y=65.15+30.25*Math.sin(angle);
+            const state=states[l]||"pending";
+            return <span key={l} className={`rosco-v212__letter ${state}`} style={{left:`${x}%`,top:`${y}%`}}>{l}</span>
+          })}
+        </div>
+      </div>
+
+      {!done ? <div className="rosco-v212__play">
+        <div className="rosco-v212__letter-chip">LETRA {current}</div>
+        <div className="rosco-v212__question">{question?.q}</div>
+        <input
+          ref={inputRef}
+          className="rosco-v212__input"
+          value={value}
+          onChange={e=>setValue(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")answer()}}
+          placeholder="Escribe tu respuesta..."
+          autoComplete="off"
+          aria-label={`Respuesta para la letra ${current}`}
+        />
+        <div className="rosco-v212__actions">
+          <button className="answer" onClick={answer} disabled={!value.trim()||!!feedback}>✓ RESPONDER</button>
+          <button className="pass" onClick={pass} disabled={!!feedback}>» PASAPALABRA</button>
+          <button className="quit" onClick={()=>go("games")}>✕ ABANDONAR</button>
+        </div>
+        {feedback&&<div className={`rosco-v212__feedback ${feedback}`}>{feedback==="ok"?"✓ ¡CORRECTO!":`✕ INCORRECTO · ${question.a}`}</div>}
+      </div> : <div className="rosco-v212__finish">
+        <h2>ROSCO TERMINADO</h2>
+        <p><b>{correct}/27</b> aciertos · {wrong} fallos</p>
+        <p>Tiempo: <b>{mm}:{ss}</b></p>
+        <p>Récord: <b>{record.bestScore}/27</b>{record.bestTime!=null?` · ${bestTimeLabel}`:""}</p>
+        <button onClick={restart}>JUGAR OTRA VEZ</button>
+        <button onClick={()=>go("games")}>VOLVER A EXCLU GAMES</button>
+      </div>}
+
+      <nav className="rosco-v212__nav" aria-label="Navegación del Rosco">
+        <button onClick={()=>go("home")}><Home/><span>Inicio</span></button>
+        <button onClick={()=>go("passport")}><span className="passport-icon"><PassportGlyph/></span><span>Pasaporte</span></button>
+        <button className="active" onClick={()=>go("games")}><Gamepad2/><span>Juegos</span></button>
+        <button onClick={()=>go("photo")}><Camera/><span>Fotomatón</span></button>
+      </nav>
+    </div>
+  </section>;
+
+}
+
+function SnakeExclu(){
+ const [score,setScore]=useState(0),[running,setRunning]=useState(false),[pos,setPos]=useState(44),[food,setFood]=useState(22);
+ useEffect(()=>{if(!running)return;const t=setInterval(()=>{setPos(p=>{const n=(p+7)%100;if(Math.abs(n-food)<8){setScore(s=>s+1);setFood(Math.floor(Math.random()*90)+5);sound("correct")}return n})},180);return()=>clearInterval(t)},[running,food]);
+ return <Card tone="teal" tag="EXCLU GAMES" title="EXCLU SNAKE" sub="Recoge cafés y supera tu récord"><div className="snake-stage"><span className="snake-exclu" style={{left:`${pos}%`}}>🤖</span><span className="snake-food" style={{left:`${food}%`}}>☕</span></div><h3>Puntos: {score}</h3><button className="cta-orange" onClick={()=>setRunning(r=>!r)}>{running?"PAUSA":"JUGAR"}</button></Card>
+}
+type DifferenceLevel = { count: 5|10|15; label: string; tone: string };
+const DIFFERENCE_LEVELS: DifferenceLevel[] = [
+  {count:5,label:"FÁCIL",tone:"easy"},
+  {count:10,label:"MEDIO",tone:"medium"},
+  {count:15,label:"DIFÍCIL",tone:"hard"},
+];
+type DifferenceScene = { id:string; original:string; altered:string; spots:{x:number;y:number;s:number}[] };
+const DIFFERENCE_SCENES: Record<5|10|15,DifferenceScene> = {
+  5:{id:"coffee",original:"/assets/differences-v245-real/coffee-a.webp",altered:"/assets/differences-v245-real/coffee-b.webp",spots:[
+    {x:8,y:19,s:11},{x:83,y:24,s:10},{x:78,y:76,s:12},{x:21,y:75,s:12},{x:56,y:66,s:11}
+  ]},
+  10:{id:"cocktail",original:"/assets/differences-v245-real/cocktail-a.webp",altered:"/assets/differences-v245-real/cocktail-b.webp",spots:[
+    {x:22,y:16,s:10},{x:40,y:20,s:10},{x:57,y:18,s:10},{x:74,y:22,s:10},{x:86,y:54,s:10},
+    {x:70,y:55,s:10},{x:51,y:58,s:10},{x:31,y:56,s:10},{x:14,y:64,s:10},{x:89,y:83,s:10}
+  ]},
+  15:{id:"burger",original:"/assets/differences-v245-real/burger-a.webp",altered:"/assets/differences-v245-real/burger-b.webp",spots:[
+    {x:36,y:18,s:8},{x:51,y:19,s:8},{x:66,y:20,s:8},{x:77,y:28,s:8},{x:82,y:45,s:8},
+    {x:77,y:66,s:8},{x:65,y:74,s:8},{x:53,y:76,s:8},{x:40,y:75,s:8},{x:28,y:70,s:8},
+    {x:18,y:60,s:8},{x:20,y:43,s:8},{x:27,y:31,s:8},{x:49,y:49,s:9},{x:60,y:58,s:9}
+  ]}
+};
+
+function SpotDifferences({setView,userId,soundOn,onToggleSound,photoCount}:{setView:(v:View)=>void;userId:string|null;soundOn:boolean;onToggleSound:()=>void;photoCount:number}){
+  const [phase,setPhase]=useState<"menu"|"show"|"input"|"over">("menu");
+  const [sequence,setSequence]=useState<number[]>([]);
+  const [inputIndex,setInputIndex]=useState(0);
+  const [score,setScore]=useState(0);
+  const [streak,setStreak]=useState(0);
+  const [best,setBest]=useState(()=>Number(localStorage.getItem("exclu_simon_best")||0));
+  const [lit,setLit]=useState<number|null>(null);
+  const [message,setMessage]=useState("Pulsa ¡A JUGAR! para comenzar");
+  const timers=useRef<number[]>([]);
+  const colors=["rojo","verde","cian","amarillo"];
+  const go=(v:View)=>{sound("click");setView(v);window.scrollTo({top:0,behavior:"instant" as ScrollBehavior})};
+  const clearTimers=()=>{timers.current.forEach(t=>window.clearTimeout(t));timers.current=[]};
+  useEffect(()=>()=>clearTimers(),[]);
+  function tone(i:number){
+    if(localStorage.getItem("exclu_sound")==="off")return;
+    try{const A=window.AudioContext||(window as any).webkitAudioContext;const c=new A(),o=c.createOscillator(),g=c.createGain();o.frequency.value=[330,440,550,660][i];o.type="sine";g.gain.value=.08;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.16);setTimeout(()=>c.close(),300)}catch{}
+  }
+  function flash(i:number,d=330){setLit(i);tone(i);timers.current.push(window.setTimeout(()=>setLit(null),d))}
+  function playSequence(seq:number[]){
+    clearTimers();setPhase("show");setInputIndex(0);setMessage("¡Observa la secuencia!");
+    const gap=seq.length>10?430:seq.length>6?500:570;
+    seq.forEach((n,k)=>timers.current.push(window.setTimeout(()=>flash(n,Math.min(300,gap-120)),350+k*gap)));
+    timers.current.push(window.setTimeout(()=>{setPhase("input");setMessage("Ahora repítela")},350+seq.length*gap+120));
+  }
+  function startGame(){const first=[Math.floor(Math.random()*4)];setSequence(first);setScore(0);setStreak(0);setInputIndex(0);playSequence(first)}
+  async function saveBest(v:number){
+    if(v<=best)return;setBest(v);localStorage.setItem("exclu_simon_best",String(v));
+    if(userId){try{await supabase.rpc("save_minigame_record",{p_game_key:"exclu_dice",p_score:v,p_time_seconds:0})}catch{}}
+  }
+  function press(i:number){
+    if(phase!=="input")return;flash(i,180);
+    if(i!==sequence[inputIndex]){sound("wrong");setMessage("¡Ups! Secuencia incorrecta");setPhase("over");void saveBest(score);return}
+    const next=inputIndex+1;
+    if(next===sequence.length){
+      const newScore=score+sequence.length*100;setScore(newScore);setStreak(s=>s+1);sound("correct");
+      const nextSeq=[...sequence,Math.floor(Math.random()*4)];setSequence(nextSeq);setMessage("¡Bien! Siguiente ronda…");
+      timers.current.push(window.setTimeout(()=>playSequence(nextSeq),700));
+    }else setInputIndex(next);
+  }
+  return <main className="simon-v248" aria-label="EXCLU DICE">
+    <div className="simon-v248__screen">
+      <img className="simon-v248__art" src={phase==="menu"?"/assets/exclu-dice-approved-menu-v252.webp":"/assets/exclu-dice-approved-game-v252.webp"} alt="" aria-hidden="true"/>
+      <div className="simon-v249__nav-mask" aria-hidden="true"/>
+
+      <header className="simon-v248__header">
+        <button className="simon-v248__back" onClick={()=>phase==="menu"?go("games"):(clearTimers(),setPhase("menu"))} aria-label="Volver"><ChevronLeft/></button>
+        <span className="simon-v248__logo-wrap"><img src="/assets/logo-la-exclusiva-full-approved.png" alt="La Exclusiva Cafetería"/></span>
+        <button className="simon-v248__sound" onClick={onToggleSound} aria-label="Sonido">{soundOn?<Volume2/>:<VolumeX/>}</button>
+      </header>
+
+      {phase==="menu" ? <>
+        <button className="simon-v248__hot simon-v248__play-hot" onClick={startGame} aria-label="Jugar EXCLU DICE"/>
+      </> : <>
+        <div className="simon-v248__stats">
+          <div><small>NIVEL</small><b>{sequence.length}</b></div>
+          <div><small>PUNTUACIÓN</small><b>{score}</b></div>
+          <div><small>RACHA</small><b>{streak}</b></div>
+        </div>
+        <div className="simon-v248__pads" aria-label="Tablero EXCLU DICE">
+          {[0,1,2,3].map(i=><button key={i} className={`simon-v248__pad p${i} ${lit===i?"lit":""}`} disabled={phase!=="input"} onClick={()=>press(i)} aria-label={colors[i]}/>) }
+          <span className="simon-v249__center-logo" aria-hidden="true"><img src="/assets/logo-la-exclusiva-real-icon.png" alt=""/></span>
+        </div>
+        <div className="simon-v249__scorebar">
+          <div className="simon-v249__best"><span>♛ MEJOR PUNTUACIÓN</span><b>{best}</b></div>
+          <button className="simon-v249__restart" onClick={startGame}><RefreshCw/><span>Reiniciar</span></button>
+        </div>
+        {phase==="over"&&<button className="simon-v248__again" onClick={startGame}>JUGAR OTRA VEZ</button>}
+      </>}
+    </div>
+    <BottomNav view="differences" setView={setView} photoCount={photoCount}/>
+  </main>
+}
+
+const PUZZLE_IMAGES = MEMORY_LIBRARY.filter(x=>x.id!=="logo").map(x=>({id:x.id,image:x.image}));
+const PUZZLE_LEVELS = [
+  {pieces:16,rows:4,cols:4,label:"FÁCIL",tone:"green"},
+  {pieces:25,rows:5,cols:5,label:"MEDIO",tone:"blue"},
+  {pieces:50,rows:10,cols:5,label:"DIFÍCIL",tone:"orange"},
+  {pieces:100,rows:10,cols:10,label:"EXPERTO",tone:"red"},
+] as const;
+
+type PuzzleEdge = -1|0|1;
+function puzzlePath(top:PuzzleEdge,right:PuzzleEdge,bottom:PuzzleEdge,left:PuzzleEdge){
+  const t=top===0?"H100":`H35 C35 ${top>0?-15:15},65 ${top>0?-15:15},65 0 H100`;
+  const r=right===0?"V100":`V35 C${right>0?115:85} 35,${right>0?115:85} 65,100 65 V100`;
+  const b=bottom===0?"H0":`H65 C65 ${bottom>0?115:85},35 ${bottom>0?115:85},35 100 H0`;
+  const l=left===0?"V0":`V65 C${left>0?-15:15} 65,${left>0?-15:15} 35,0 35 V0`;
+  return `M0 0 ${t} ${r} ${b} ${l} Z`;
+}
+function puzzleEdges(piece:number,rows:number,cols:number):[PuzzleEdge,PuzzleEdge,PuzzleEdge,PuzzleEdge]{
+  const row=Math.floor(piece/cols), col=piece%cols;
+  const h=(r:number,c:number):PuzzleEdge=>((r*cols+c)%2===0?1:-1);
+  const v=(r:number,c:number):PuzzleEdge=>((r*cols+c+r)%2===0?-1:1);
+  const top: PuzzleEdge = row===0?0:(-h(row-1,col) as PuzzleEdge);
+  const right: PuzzleEdge = col===cols-1?0:v(row,col);
+  const bottom: PuzzleEdge = row===rows-1?0:h(row,col);
+  const left: PuzzleEdge = col===0?0:(-v(row,col-1) as PuzzleEdge);
+  return [top,right,bottom,left];
+}
+function puzzleShuffle(n:number){
+  let a=Array.from({length:n},(_,i)=>i);
+  do{for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}while(a.every((v,i)=>v===i));
+  return a;
+}
+
+function PuzzleExclu({setView,userId,soundOn,onToggleSound}:{setView:(v:View)=>void;userId:string|null;soundOn:boolean;onToggleSound:()=>void}){
+  const [imageId,setImageId]=useState(PUZZLE_IMAGES[0]?.id||"excu");
+  const [level,setLevel]=useState<typeof PUZZLE_LEVELS[number]>(PUZZLE_LEVELS[0]);
+  const [phase,setPhase]=useState<"images"|"level"|"play"|"done">("images");
+  const [tray,setTray]=useState<number[]>([]);
+  const [placed,setPlaced]=useState<Set<number>>(new Set());
+  const [moves,setMoves]=useState(0);
+  const [seconds,setSeconds]=useState(0);
+  const [running,setRunning]=useState(false);
+  const [bestMoves,setBestMoves]=useState<number|null>(null);
+  const [bestTime,setBestTime]=useState<number|null>(null);
+  const [preview,setPreview]=useState(false);
+  const [drag,setDrag]=useState<{piece:number;x:number;y:number;size:number}|null>(null);
+  const [pieceFilter,setPieceFilter]=useState<"edge"|"inner">("edge");
+  const boardRef=useRef<HTMLDivElement|null>(null);
+  const selected=PUZZLE_IMAGES.find(x=>x.id===imageId)||PUZZLE_IMAGES[0];
+  const fmt=(n:number|null)=>n==null?"--:--":`${String(Math.floor(n/60)).padStart(2,"0")}:${String(n%60).padStart(2,"0")}`;
+  const recordKey=`puzzle_${imageId}_${level.pieces}`;
+  const go=(v:View)=>{sound("click");setView(v);window.scrollTo({top:0,behavior:"smooth"})};
+
+  useEffect(()=>{if(!running||phase!=="play")return;const t=window.setInterval(()=>setSeconds(s=>s+1),1000);return()=>window.clearInterval(t)},[running,phase]);
+  useEffect(()=>{
+    setBestMoves(null);setBestTime(null);
+    if(!userId)return;let alive=true;
+    (async()=>{try{const {data}=await supabase.from("minigame_records").select("best_score,best_time_seconds").eq("user_id",userId).eq("game_key",recordKey).maybeSingle();if(!alive||!data)return;const score=Number(data.best_score||0);if(score>0)setBestMoves(Math.max(0,100000-score));if(data.best_time_seconds!=null)setBestTime(Number(data.best_time_seconds))}catch{}})();
+    return()=>{alive=false};
+  },[userId,recordKey]);
+
+  function start(){setTray(puzzleShuffle(level.pieces));setPlaced(new Set());setMoves(0);setSeconds(0);setRunning(false);setPreview(false);setDrag(null);setPieceFilter("edge");setPhase("play");sound("open")}
+  async function finish(finalMoves:number,finalSeconds:number){
+    const better=bestMoves==null||finalMoves<bestMoves||(finalMoves===bestMoves&&(bestTime==null||finalSeconds<bestTime));
+    if(better){setBestMoves(finalMoves);setBestTime(finalSeconds)}
+    if(userId){try{await supabase.rpc("save_minigame_record",{p_game_key:recordKey,p_score:Math.max(1,100000-finalMoves),p_time_seconds:finalSeconds})}catch(e){console.warn("No se pudo guardar récord de Puzzle EXCLU",e)}}
+  }
+  function dropAt(clientX:number,clientY:number){
+    if(!drag||!boardRef.current){setDrag(null);return}
+    const rect=boardRef.current.getBoundingClientRect();
+    const inside=clientX>=rect.left&&clientX<=rect.right&&clientY>=rect.top&&clientY<=rect.bottom;
+    const nextMoves=moves+1;setMoves(nextMoves);
+    if(!inside){setDrag(null);sound("click");return}
+    const col=Math.max(0,Math.min(level.cols-1,Math.floor((clientX-rect.left)/rect.width*level.cols)));
+    const row=Math.max(0,Math.min(level.rows-1,Math.floor((clientY-rect.top)/rect.height*level.rows)));
+    const target=row*level.cols+col;
+    if(target!==drag.piece||placed.has(drag.piece)){
+      setDrag(null);sound("click");return;
+    }
+    const nextPlaced=new Set(placed);nextPlaced.add(drag.piece);setPlaced(nextPlaced);setTray(t=>t.filter(x=>x!==drag.piece));setDrag(null);sound("correct");
+    if(nextPlaced.size===level.pieces){setRunning(false);setPhase("done");sound("win");void finish(nextMoves,seconds)}
+  }
+  function pointerDown(e:any,piece:number){
+    if(phase!=="play")return;if(!running)setRunning(true);
+    e.preventDefault();
+    const el=e.currentTarget as HTMLElement;el.setPointerCapture?.(e.pointerId);
+    const board=boardRef.current?.getBoundingClientRect();
+    const cellSize=board ? Math.min(board.width/level.cols,board.height/level.rows) : 88;
+    const dragSize=level.pieces===100 ? Math.max(28,cellSize) : Math.min(88,Math.max(54,cellSize*1.05));
+    setDrag({piece,x:e.clientX,y:e.clientY,size:dragSize});sound("click");
+  }
+  function pointerMove(e:any){
+    if(!drag)return;
+    e.preventDefault();
+    setDrag(d=>d?{...d,x:e.clientX,y:e.clientY}:d)
+  }
+  function pointerUp(e:any){e.preventDefault();dropAt(e.clientX,e.clientY)}
+
+  return <main className="puzzle-v231" aria-label="Puzzle EXCLU">
+    <header className="puzzle-v231__header">
+      <button onClick={()=>phase==="images"?go("games"):setPhase(phase==="level"?"images":"level")} className="puzzle-v231__back"><ChevronLeft/> Volver</button>
+      <div className="puzzle-v231__brand"><img src="/assets/logo-la-exclusiva-real-icon.png" alt=""/><div><strong>La Exclusiva</strong><span>CAFETERÍA</span></div></div>
+      <button onClick={onToggleSound} className="puzzle-v231__sound" aria-label={soundOn?"Desactivar sonido":"Activar sonido"}>{soundOn?<Volume2/>:<VolumeX/>}</button>
+    </header>
+
+    <section className="puzzle-v231__title"><span>🧩</span><div><h1>PUZZLE <em>EXCLU</em></h1><p>Pequeñas piezas, grandes momentos</p></div></section>
+
+    {phase==="images"&&<section className="puzzle-v231__panel"><h2>ELIGE TU IMAGEN</h2><p>Todas las imágenes están disponibles en los cuatro niveles.</p><div className="puzzle-v231__gallery">{PUZZLE_IMAGES.map(img=><button key={img.id} className={imageId===img.id?"active":""} onClick={()=>{setImageId(img.id);sound("click")}}><img src={img.image} alt=""/></button>)}</div><button className="puzzle-v231__primary" onClick={()=>setPhase("level")}>CONTINUAR</button></section>}
+
+    {phase==="level"&&<section className="puzzle-v231__panel"><div className="puzzle-v231__chosen"><img src={selected.image} alt="Imagen elegida"/></div><h2>ELIGE LA DIFICULTAD</h2><div className="puzzle-v231__levels">{PUZZLE_LEVELS.map(l=><button key={l.pieces} className={`${l.tone} ${level.pieces===l.pieces?"active":""}`} onClick={()=>{setLevel(l);sound("click")}}><b>{l.pieces}</b><span>PIEZAS</span><small>{l.rows} × {l.cols} · {l.label}</small></button>)}</div><button className="puzzle-v231__primary" onClick={start}>▶ COMENZAR</button></section>}
+
+    {(phase==="play"||phase==="done")&&<section className="puzzle-v231__game">
+      <div className="puzzle-v231__stats"><div><small>TIEMPO</small><b>{fmt(seconds)}</b></div><div><small>MOVIMIENTOS</small><b>{moves}</b></div><div><small>RÉCORD</small><b>{bestMoves==null?"--":`${bestMoves} mov.`}</b><em>{fmt(bestTime)}</em></div></div>
+      <div className={`puzzle-v231__board ${preview?"preview":""}`} ref={boardRef} style={{aspectRatio:`${level.cols}/${level.rows}`}}>
+        {preview&&<img className="puzzle-v231__preview" src={selected.image} alt="Vista previa"/>}
+        {!preview&&Array.from({length:level.pieces},(_,slot)=>{const row=Math.floor(slot/level.cols),col=slot%level.cols;const isPlaced=placed.has(slot);const [top,right,bottom,left]=puzzleEdges(slot,level.rows,level.cols);const path=puzzlePath(top,right,bottom,left);return <div key={slot} className={`puzzle-v233__slot ${isPlaced?"filled":""}`} style={{left:`${col*100/level.cols}%`,top:`${row*100/level.rows}%`,width:`${100/level.cols}%`,height:`${100/level.rows}%`}}>{isPlaced&&<svg className="puzzle-v235__placed-piece" viewBox="-18 -18 136 136" preserveAspectRatio="none"><defs><clipPath id={`placed-clip-${slot}`}><path d={path}/></clipPath></defs><g clipPath={`url(#placed-clip-${slot})`}><image href={selected.image} x={-col*100} y={-row*100} width={level.cols*100} height={level.rows*100} preserveAspectRatio="none"/></g><path d={path} fill="none" stroke="#e8b838" strokeWidth="1.1" vectorEffect="non-scaling-stroke" opacity=".58"/></svg>}</div>})}
+      </div>
+
+      {phase==="play"&&<div className="puzzle-v233__tray-wrap"><div className="puzzle-v233__tray-title"><b>PIEZAS</b><span>Desliza y arrastra hasta el tablero</span><em>{tray.length} restantes</em></div><div className="puzzle-v238__filters"><button className={pieceFilter==="edge"?"active":""} onClick={()=>{setPieceFilter("edge");sound("click")}}>CON BORDE</button><button className={pieceFilter==="inner"?"active":""} onClick={()=>{setPieceFilter("inner");sound("click")}}>SIN BORDE</button></div><div className={`puzzle-v233__tray puzzle-v238__slider pieces-${level.pieces}`}>{tray.filter(piece=>{const r=Math.floor(piece/level.cols),c=piece%level.cols;const edge=r===0||c===0||r===level.rows-1||c===level.cols-1;return pieceFilter==="edge"?edge:!edge}).map(piece=>{const pr=Math.floor(piece/level.cols),pc=piece%level.cols;const [top,right,bottom,left]=puzzleEdges(piece,level.rows,level.cols);const path=puzzlePath(top,right,bottom,left);const dragging=drag?.piece===piece;return <button key={piece} className={`puzzle-v233__loose ${dragging?"dragging":""}`} onPointerDown={e=>pointerDown(e,piece)} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={()=>setDrag(null)} aria-label={`Pieza ${piece+1}`}><svg viewBox="-18 -18 136 136" preserveAspectRatio="none"><defs><clipPath id={`piececlip-${piece}`}><path d={path}/></clipPath></defs><g clipPath={`url(#piececlip-${piece})`}><image href={selected.image} x={-pc*100} y={-pr*100} width={level.cols*100} height={level.rows*100} preserveAspectRatio="none"/></g><path d={path} fill="none" stroke="#f3c64f" strokeWidth="2.3" vectorEffect="non-scaling-stroke"/></svg></button>})}</div></div>}
+
+      {phase==="play"?<div className="puzzle-v231__tools"><button onClick={()=>setPreview(v=>!v)}>👁 {preview?"VOLVER AL PUZZLE":"VISTA PREVIA"}</button><button onClick={()=>{setTray(t=>puzzleShuffle(t.length).map(i=>t[i]));setMoves(m=>m+1);sound("click")}}>🔀 MEZCLAR</button><button onClick={start}><RefreshCw/> REINICIAR</button></div>:<div className="puzzle-v231__complete"><h2>🎉 ¡PUZZLE COMPLETADO!</h2><p>{level.pieces} piezas · {moves} movimientos · {fmt(seconds)}</p><button className="puzzle-v231__primary" onClick={start}>JUGAR OTRA VEZ</button><button className="puzzle-v231__secondary" onClick={()=>setPhase("images")}>ELEGIR OTRA IMAGEN</button></div>}
+    </section>}
+
+    {drag&&phase==="play"&&(()=>{const piece=drag.piece;const pr=Math.floor(piece/level.cols),pc=piece%level.cols;const [top,right,bottom,left]=puzzleEdges(piece,level.rows,level.cols);const path=puzzlePath(top,right,bottom,left);return <div className={`puzzle-v234__drag-ghost ${level.pieces===100?"pieces-100":""}`} style={{left:drag.x,top:drag.y,width:drag.size,height:drag.size}} aria-hidden="true"><svg viewBox="-18 -18 136 136" preserveAspectRatio="none"><defs><clipPath id="drag-piece-clip"><path d={path}/></clipPath></defs><g clipPath="url(#drag-piece-clip)"><image href={selected.image} x={-pc*100} y={-pr*100} width={level.cols*100} height={level.rows*100} preserveAspectRatio="none"/></g><path d={path} fill="none" stroke="#00eff7" strokeWidth="2.8" vectorEffect="non-scaling-stroke"/><path d={path} fill="none" stroke="#f4c94f" strokeWidth="1.2" vectorEffect="non-scaling-stroke"/></svg></div>})()}
+
+    <nav className="puzzle-v231__nav"><button onClick={()=>go("home")}><Home/><span>Inicio</span></button><button onClick={()=>go("passport")}><span className="passport-icon"><PassportGlyph/></span><span>Pasaporte</span></button><button className="active" onClick={()=>go("games")}><Gamepad2/><span>Juegos</span></button><button onClick={()=>go("photo")}><Camera/><span>Fotomatón</span></button></nav>
+  </main>
 }
 
 function RegisterPanel({ registered, phoneMasked, phone, setPhone, accepted, setAccepted, busy, onRegister }: any) {
   return <section id="register" className={`register-panel ${registered ? "registered" : ""}`}>
-    <img src="/assets/exclu-robot-premium.png" alt="EXCLU" />
+    <img src="/assets/exclu-approved-photobooth.png" alt="EXCLU" />
     <div className="register-copy">
       <b>{registered ? "✓ YA ESTÁS REGISTRADO" : "PARTICIPA SIN SMS Y SIN COSTE"}</b>
       <small>{registered ? `${phoneMasked ?? "Tu teléfono"} · Una participación por persona y día.` : "Introduce tu teléfono. Lo usamos solo para evitar participaciones duplicadas; no enviamos ningún SMS."}</small>
@@ -841,55 +1470,294 @@ function Wheel({ busy, played, registered, play, soundOn, onToggleSound }: { bus
   </section>;
 }
 
-const questions = [
-  ["¿A qué hora abre La Exclusiva?", ["08:00", "06:00", "10:00"], 1],
-  ["¿Cómo se llama nuestro robot?", ["EXCLU", "NICO", "LUX"], 0],
-  ["¿Cuántos días dura EXCLU FEST?", ["1", "2", "3"], 2],
+type QuizQuestion = { id: number; question: string; options: string[]; category: string; difficulty: number; correctIndex?: number; optionMap?: number[] };
+
+const QUIZ_PREVIEW_BANK = [
+  {"id": 1, "question": "¿En qué año aparece documentado por primera vez el nombre «Coto de San Nicolás del Mar»?", "options": ["1476", "1492", "1521", "1605"], "category": "Historia", "difficulty": 3, "correctIndex": 0},
+  {"id": 2, "question": "¿Qué día se fecha el primer documento conocido que menciona el Coto de San Nicolás del Mar?", "options": ["11 de noviembre de 1476", "6 de diciembre de 1492", "19 de agosto de 1500", "28 de febrero de 1476"], "category": "Historia", "difficulty": 3, "correctIndex": 0},
+  {"id": 3, "question": "¿Quién figura como primer propietario de la colina de El Coto en aquella documentación?", "options": ["Juan de Gijón", "Miguel García de la Cruz", "Calixto Alvargonzález", "Alfonso Menéndez"], "category": "Historia", "difficulty": 3, "correctIndex": 0},
+  {"id": 4, "question": "¿Qué zonas actuales llegó a abarcar hacia el este el antiguo Coto de San Nicolás?", "options": ["El Bibio, Viesques y La Guía", "La Calzada, Jove y Tremañes", "Cimavilla y El Natahoyo", "Roces y Montevil"], "category": "Historia", "difficulty": 2, "correctIndex": 0},
+  {"id": 5, "question": "¿Hasta qué zona llegaba aproximadamente por el oeste el antiguo Coto de San Nicolás?", "options": ["La Cruz de Ceares", "El Musel", "La Calzada", "Somió"], "category": "Historia", "difficulty": 3, "correctIndex": 0},
+  {"id": 6, "question": "¿De dónde procede la parte «del Mar» del antiguo nombre San Nicolás del Mar?", "options": ["De que el terreno llegaba hasta el arenal", "De una familia de marineros", "De un antiguo puerto", "Del nombre de una calle"], "category": "Historia", "difficulty": 2, "correctIndex": 0},
+  {"id": 7, "question": "¿En qué año diseñaron los hermanos Menéndez-Morán la parcelación en cuadrícula de El Coto?", "options": ["1898", "1888", "1909", "1922"], "category": "Urbanismo", "difficulty": 3, "correctIndex": 0},
+  {"id": 8, "question": "¿Con qué idea urbanística nació inicialmente la parcelación moderna de El Coto?", "options": ["Como ciudad jardín", "Como barrio industrial", "Como puerto comercial", "Como ensanche ferroviario"], "category": "Urbanismo", "difficulty": 2, "correctIndex": 0},
+  {"id": 9, "question": "¿Qué dos grandes construcciones impulsaron especialmente la urbanización de El Coto a comienzos del siglo XX?", "options": ["El cuartel y la cárcel", "La plaza de toros y el puerto", "La universidad y el hospital", "La estación y el mercado"], "category": "Urbanismo", "difficulty": 2, "correctIndex": 0},
+  {"id": 10, "question": "¿Qué servicios se extendieron en el barrio en buena medida por las necesidades del cuartel y la cárcel?", "options": ["Alcantarillado, luz y agua", "Tranvía, gas y teléfono", "Metro, fibra y gas", "Ferrocarril, puerto y telégrafo"], "category": "Urbanismo", "difficulty": 3, "correctIndex": 0},
+  {"id": 11, "question": "¿Qué rasgo conserva buena parte del trazado de calles de El Coto?", "options": ["Calles paralelas y perpendiculares de anchura considerable", "Calles concéntricas muy estrechas", "Un trazado medieval irregular", "Una única avenida radial"], "category": "Urbanismo", "difficulty": 2, "correctIndex": 0},
+  {"id": 12, "question": "¿Qué calle es conocida históricamente como Bulevar de La Cruz?", "options": ["Ramón y Cajal", "Quevedo", "Feijoo", "Avelino González Mallada"], "category": "Urbanismo", "difficulty": 3, "correctIndex": 0},
+  {"id": 13, "question": "¿Qué avenida fue conocida como Bulevar de San José?", "options": ["Pablo Iglesias", "Constitución", "Portugal", "Schultz"], "category": "Urbanismo", "difficulty": 3, "correctIndex": 0},
+  {"id": 14, "question": "¿A partir de qué década cambió fuertemente la fisonomía de El Coto con edificios de hasta seis plantas?", "options": ["Década de 1960", "Década de 1920", "Década de 1980", "Década de 2000"], "category": "Historia", "difficulty": 2, "correctIndex": 0},
+  {"id": 15, "question": "¿Qué monarca colocó la primera piedra del cuartel Alfonso XIII de El Coto?", "options": ["Alfonso XIII", "Alfonso XII", "Juan Carlos I", "Amadeo I"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 16, "question": "¿Qué edad tenía Alfonso XIII cuando colocó la primera piedra del cuartel en 1900?", "options": ["14 años", "18 años", "21 años", "10 años"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 17, "question": "¿En qué fecha se colocó la primera piedra del cuartel Alfonso XIII?", "options": ["19 de agosto de 1900", "9 de agosto de 1909", "18 de julio de 1905", "8 de febrero de 1985"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 18, "question": "¿En qué año fue inaugurado el cuartel Alfonso XIII?", "options": ["1911", "1900", "1909", "1924"], "category": "Cuartel", "difficulty": 2, "correctIndex": 0},
+  {"id": 19, "question": "¿En qué año abandonó el cuartel su última guarnición?", "options": ["1985", "1978", "1992", "1994"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 20, "question": "¿Qué sobrenombre tenía el Regimiento de Infantería Tarragona nº 78 acuartelado en El Coto?", "options": ["El Firme", "El Coto", "El Astur", "San Nicolás"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 21, "question": "¿Qué unidad estuvo posteriormente en el cuartel de El Coto?", "options": ["Batallón de Zapadores Minadores 8", "Regimiento Covadonga 1", "Brigada Galicia 7", "Batallón Pelayo 3"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 22, "question": "¿En qué fecha cayó el cuartel tras el asedio durante la Guerra Civil?", "options": ["16 de agosto de 1936", "18 de julio de 1936", "1 de septiembre de 1937", "19 de agosto de 1936"], "category": "Cuartel", "difficulty": 3, "correctIndex": 0},
+  {"id": 23, "question": "¿Quién fue el arquitecto municipal del proyecto de la antigua cárcel de El Coto aprobado en 1905?", "options": ["Miguel García de la Cruz", "Luis Bellido", "Manuel del Busto", "Juan Miguel de la Guardia"], "category": "Cárcel", "difficulty": 3, "correctIndex": 0},
+  {"id": 24, "question": "¿En qué año comenzaron las obras de la antigua cárcel de El Coto?", "options": ["1906", "1898", "1909", "1911"], "category": "Cárcel", "difficulty": 3, "correctIndex": 0},
+  {"id": 25, "question": "¿En qué fecha fue inaugurada la antigua cárcel de El Coto?", "options": ["9 de agosto de 1909", "19 de agosto de 1900", "18 de julio de 1905", "28 de febrero de 1909"], "category": "Cárcel", "difficulty": 3, "correctIndex": 0},
+  {"id": 26, "question": "¿Quién era inicialmente propietario de la antigua cárcel de El Coto?", "options": ["El Ayuntamiento de Gijón", "El Estado", "El Ejército", "La Diputación de Oviedo"], "category": "Cárcel", "difficulty": 2, "correctIndex": 0},
+  {"id": 27, "question": "¿En qué año se cedió al Estado la antigua cárcel de El Coto?", "options": ["1924", "1909", "1936", "1985"], "category": "Cárcel", "difficulty": 3, "correctIndex": 0},
+  {"id": 28, "question": "¿Qué posición llegó a ocupar la cárcel de El Coto por importancia en Asturias?", "options": ["La segunda, tras la Correccional de Oviedo", "La primera de Asturias", "La tercera, tras Avilés y Oviedo", "Nunca fue prisión provincial"], "category": "Cárcel", "difficulty": 2, "correctIndex": 0},
+  {"id": 29, "question": "¿En qué año cerró definitivamente la cárcel de El Coto?", "options": ["1993", "1985", "1992", "1997"], "category": "Cárcel", "difficulty": 3, "correctIndex": 0},
+  {"id": 30, "question": "¿En qué año fue derribada la mayor parte de la antigua cárcel?", "options": ["1994", "1993", "1998", "1989"], "category": "Cárcel", "difficulty": 3, "correctIndex": 0},
+  {"id": 31, "question": "¿Qué parte de la antigua cárcel de El Coto se conserva?", "options": ["El edificio de entrada", "Una torre de vigilancia", "El patio central completo", "El muro perimetral completo"], "category": "Cárcel", "difficulty": 2, "correctIndex": 0},
+  {"id": 32, "question": "¿Qué uso tuvo el edificio de entrada conservado de la antigua cárcel?", "options": ["Hogar del Pensionista", "Comisaría", "Biblioteca infantil", "Museo ferroviario"], "category": "Cárcel", "difficulty": 2, "correctIndex": 0},
+  {"id": 33, "question": "¿En qué año comenzó su andadura la Biblioteca Municipal de El Coto?", "options": ["1983", "1975", "1992", "1998"], "category": "Biblioteca", "difficulty": 3, "correctIndex": 0},
+  {"id": 34, "question": "¿Quién impulsó inicialmente la Biblioteca Municipal de El Coto?", "options": ["La Asociación de Vecinos", "La Universidad de Oviedo", "El Ejército", "La Cámara de Comercio"], "category": "Biblioteca", "difficulty": 2, "correctIndex": 0},
+  {"id": 35, "question": "¿En qué calle comenzó la Biblioteca Municipal de El Coto?", "options": ["Avelino González Mallada", "Quevedo", "Ramón y Cajal", "General Suárez Valdés"], "category": "Biblioteca", "difficulty": 3, "correctIndex": 0},
+  {"id": 36, "question": "¿A qué calle se trasladó la biblioteca antes de instalarse en el Centro Municipal?", "options": ["Leopoldo Alas", "Feijoo", "San Nicolás", "Pablo Iglesias"], "category": "Biblioteca", "difficulty": 3, "correctIndex": 0},
+  {"id": 37, "question": "¿En qué año se trasladó definitivamente la biblioteca al Centro Municipal Integrado de El Coto?", "options": ["1997", "1983", "1993", "2001"], "category": "Biblioteca", "difficulty": 3, "correctIndex": 0},
+  {"id": 38, "question": "¿Qué fecha corresponde a la inauguración oficial de la biblioteca en su sede del Centro Municipal?", "options": ["28 de febrero de 1998", "11 de noviembre de 1997", "6 de diciembre de 1998", "9 de agosto de 1997"], "category": "Biblioteca", "difficulty": 3, "correctIndex": 0},
+  {"id": 39, "question": "¿En qué plaza se encuentra el Centro Municipal Integrado de El Coto?", "options": ["Plaza de la República", "Plaza Mayor", "Plaza de Europa", "Plaza del Humedal"], "category": "Barrio", "difficulty": 2, "correctIndex": 0},
+  {"id": 40, "question": "¿En qué plaza se encuentra la Piscina Municipal de El Coto?", "options": ["Plaza de la República", "Plaza de San Miguel", "Plaza del Instituto", "Plaza del Seis de Agosto"], "category": "Barrio", "difficulty": 2, "correctIndex": 0},
+  {"id": 41, "question": "¿En qué calle tiene su sede la Asociación Vecinal El Coto?", "options": ["Avelino González Mallada", "Corrida", "Marqués de San Esteban", "Ezcurdia"], "category": "Barrio", "difficulty": 3, "correctIndex": 0},
+  {"id": 42, "question": "¿A qué santo está dedicada la parroquia del barrio de El Coto?", "options": ["San Nicolás de Bari", "San Pedro", "San Lorenzo", "San José"], "category": "Parroquia", "difficulty": 3, "correctIndex": 0},
+  {"id": 43, "question": "¿En qué año se instaló definitivamente San Nicolás de Bari en el complejo parroquial actual?", "options": ["1992", "1983", "1998", "1975"], "category": "Parroquia", "difficulty": 3, "correctIndex": 0},
+  {"id": 44, "question": "¿En qué calle se encuentra el complejo parroquial de San Nicolás de Bari?", "options": ["Avelino González Mallada", "Ramón y Cajal", "Quevedo", "Leopoldo Alas"], "category": "Parroquia", "difficulty": 3, "correctIndex": 0},
+  {"id": 45, "question": "¿Dónde funcionó provisionalmente la parroquia de San Nicolás de Bari antes de pasar por la calle Quevedo?", "options": ["En las instalaciones del colegio de las Dominicas", "En el antiguo cuartel", "En la biblioteca", "En la plaza de toros"], "category": "Parroquia", "difficulty": 3, "correctIndex": 0},
+  {"id": 46, "question": "¿Qué reina visitó El Coto en agosto de 1900 junto a Alfonso XIII?", "options": ["María Cristina de Habsburgo-Lorena", "Victoria Eugenia de Battenberg", "Isabel II", "María de las Mercedes"], "category": "Calles", "difficulty": 3, "correctIndex": 0},
+  {"id": 47, "question": "¿Qué calle del barrio recuerda a la reina María Cristina por aquella visita de 1900?", "options": ["María Cristina", "Quevedo", "Feijoo", "Leopoldo Alas"], "category": "Calles", "difficulty": 3, "correctIndex": 0},
+  {"id": 48, "question": "¿En honor a quién se celebran las fiestas de septiembre de El Coto?", "options": ["San Nicolás", "San Lorenzo", "San Pedro", "Nuestra Señora de Begoña"], "category": "Fiestas", "difficulty": 2, "correctIndex": 0},
+  {"id": 49, "question": "¿Qué entidad organiza las Fiestas de San Nicolás de El Coto de 2026?", "options": ["La Asociación Vecinal El Coto", "El Sporting de Gijón", "La Universidad de Oviedo", "La Autoridad Portuaria"], "category": "Fiestas", "difficulty": 2, "correctIndex": 0},
+  {"id": 50, "question": "¿Qué tres días se celebran las Fiestas de San Nicolás de El Coto en 2026?", "options": ["11, 12 y 13 de septiembre", "4, 5 y 6 de septiembre", "18, 19 y 20 de septiembre", "25, 26 y 27 de septiembre"], "category": "Fiestas", "difficulty": 2, "correctIndex": 0}
 ] as const;
 
-function Quiz({ busy, played, play }: { busy: boolean; played: boolean; play: () => Promise<GameResult | null> }) {
+
+function Quiz({ busy, played, registered, onFinished }: { busy: boolean; played: boolean; registered: boolean; onFinished: (r: GameResult) => Promise<void> }) {
+  const [started, setStarted] = useState(false);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [n, setN] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<{chosen:number;correctIndex:number;isCorrect:boolean} | null>(null);
+  const [answers, setAnswers] = useState<{question_id:number;answer_index:number}[]>([]);
   const [locked, setLocked] = useState(false);
+  const [seconds, setSeconds] = useState(20);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [localPreview, setLocalPreview] = useState(false);
+  const [summary, setSummary] = useState<GameResult & {score?:number;perfect?:boolean} | null>(null);
   const q = questions[n];
 
-  async function choose(i: number) {
-    if (locked || busy || played) return;
-    setSelected(i);
-    if (i !== q[2]) { sound("wrong"); setTimeout(()=>setSelected(null),650); return; }
-    sound("correct");
-    setLocked(true);
-    await new Promise((r) => setTimeout(r, 550));
-    if (n === questions.length - 1) {
-      try { await play(); } finally { setLocked(false); }
-    } else {
-      setN((v) => v + 1); setSelected(null); setLocked(false);
+  useEffect(() => {
+    if (!started || !q || locked || summary) return;
+    setSeconds(20);
+    const id = window.setInterval(() => setSeconds(v => v <= 1 ? 20 : v - 1), 1000);
+    return () => window.clearInterval(id);
+  }, [started, n, q?.id, locked, summary]);
+
+  function diversifyQuestionOptions(items: QuizQuestion[]) {
+    return items.map((item) => {
+      const order = item.options.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      return {
+        ...item,
+        options: order.map((i) => item.options[i]),
+        optionMap: order,
+        correctIndex: item.correctIndex === undefined ? undefined : order.indexOf(item.correctIndex)
+      };
+    });
+  }
+
+  function startLocalPreviewQuiz() {
+    const shuffled=diversifyQuestionOptions([...QUIZ_PREVIEW_BANK].sort(()=>Math.random()-.5).slice(0,5).map((q,idx)=>({
+      id: 100000 + idx + Math.floor(Math.random()*10000),
+      question:q.question,
+      options:[...q.options],
+      category:q.category,
+      difficulty:q.difficulty,
+      correctIndex:q.correctIndex
+    })));
+    setAttemptId("preview-"+Date.now()); setQuestions(shuffled); setAnswers([]); setN(0); setSelected(null); setFeedback(null); setLocked(false); setStarted(true); setSummary(null); setLocalPreview(true);
+  }
+
+  async function startQuiz() {
+    if (!registered) { document.getElementById("register")?.scrollIntoView({behavior:"smooth",block:"center"}); return; }
+    if (played && !ROULETTE_PREVIEW_ENABLED) return;
+    if (ROULETTE_PREVIEW_ENABLED && played) { sound("click"); startLocalPreviewQuiz(); return; }
+    sound("click"); setLoadingQuiz(true);
+    let {data,error}=await supabase.rpc("start_coto_quiz",{p_festival_slug:FESTIVAL,p_test_day:12});
+    // Compatibilidad con instalaciones donde quedó la firma RPC de un solo parámetro.
+    if(error && String(error.message||"").toLowerCase().includes("start_coto_quiz")){
+      const retry=await supabase.rpc("start_coto_quiz",{p_festival_slug:FESTIVAL});
+      data=retry.data; error=retry.error;
+    }
+    setLoadingQuiz(false);
+    if(error){
+      if(ROULETTE_PREVIEW_ENABLED){ startLocalPreviewQuiz(); return; }
+      alert(friendlyError(error.message)); return;
+    }
+    setLocalPreview(false);
+    setAttemptId(data.attempt_id); setQuestions(diversifyQuestionOptions(data.questions ?? [])); setAnswers([]); setN(0); setSelected(null); setFeedback(null); setStarted(true); setSummary(null);
+  }
+
+  async function choose(i:number){
+    if(locked || !q || !attemptId) return;
+    sound("click"); setSelected(i); setLocked(true);
+
+    // Mostramos inmediatamente si la respuesta elegida es correcta y, si no,
+    // marcamos también en verde la opción correcta antes de pasar a la siguiente.
+    const originalAnswerIndex = q.optionMap?.[i] ?? i;
+    let correctIndex = q.correctIndex;
+    let isCorrect = correctIndex === i;
+    if(!localPreview){
+      const checked = await supabase.rpc("check_coto_quiz_answer",{
+        p_festival_slug:FESTIVAL,
+        p_attempt_id:attemptId,
+        p_question_id:q.id,
+        p_answer_index:originalAnswerIndex
+      });
+      if(checked.error){
+        setLocked(false);
+        alert("Falta instalar la comprobación de respuestas del Quiz. Ejecuta supabase/manual/SUPABASE-EJECUTAR-v192.sql una sola vez en Supabase.");
+        return;
+      }
+      const originalCorrectIndex = Number(checked.data?.correct_index);
+      correctIndex = q.optionMap ? q.optionMap.indexOf(originalCorrectIndex) : originalCorrectIndex;
+      isCorrect = Boolean(checked.data?.is_correct);
+    }
+    if(correctIndex === undefined || Number.isNaN(correctIndex)){ setLocked(false); return; }
+
+    setFeedback({chosen:i,correctIndex,isCorrect});
+    sound(isCorrect?"correct":"wrong");
+    const next=[...answers,{question_id:q.id,answer_index:originalAnswerIndex}];
+    setAnswers(next);
+
+    // Tiempo suficiente para ver claramente verde/rojo y la respuesta correcta.
+    await new Promise(r=>setTimeout(r,1250));
+    if(n<questions.length-1){ setN(v=>v+1); setSelected(null); setFeedback(null); setLocked(false); return; }
+    if(localPreview){
+      const score=next.reduce((acc,a,idx)=>acc + ((questions[idx]?.optionMap?.[questions[idx]?.correctIndex ?? -1] ?? questions[idx]?.correctIndex)===a.answer_index ? 1 : 0),0);
+      const perfect=score===5; const won=perfect && Math.random()<0.65;
+      const r={already_played:false,score,perfect,won,day:12,prize_name:won?"PREMIO DE PRUEBA":null,prize_description:won?"Simulación visual: no consume stock ni genera premio real.":null,prize_icon:won?"🎁":null,reward_code:null,raffle_entries:0,passport_complete:false,message:score<5?"MODO PRUEBAS · Día 12 simulado. Para optar a premio necesitas 5/5.":won?"MODO PRUEBAS · 5/5 y simulación de premio.":"MODO PRUEBAS · 5/5, pero esta vez no ha tocado."} as GameResult & {score:number;perfect:boolean};
+      setSummary(r); setFeedback(null); setLocked(false); return;
+    }
+    const {data,error}=await supabase.rpc("finish_coto_quiz",{p_festival_slug:FESTIVAL,p_attempt_id:attemptId,p_answers:next});
+    if(error){ setFeedback(null); setLocked(false); alert(friendlyError(error.message)); return; }
+    const r=(data ?? {}) as GameResult & {score?:number;perfect?:boolean};
+    setSummary(r); setFeedback(null); await onFinished(r); setLocked(false);
+  }
+
+  const buttonLabel=!registered?"REGÍSTRATE PARA JUGAR":loadingQuiz?"PREPARANDO...":"¡JUGAR AHORA!";
+  return <section className="quiz-pattern-screen" aria-label="Quiz EXCLU · Día 12">
+    {!started && <div className="quiz-v194-approved-intro">
+      <img src="/assets/day12-quiz-v194-intro.png" alt="Quiz · ¿Cuánto sabes de El Coto?"/>
+      <button className="quiz-v194-back-hot" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver"/>
+      <button type="button" className="quiz-v194-start-hot" onClick={(e)=>{e.preventDefault();e.stopPropagation();startQuiz();}} disabled={loadingQuiz} aria-label={buttonLabel}/>
+      {loadingQuiz && <div className="quiz-v194-loading">PREPARANDO...</div>}
+    </div>}
+    {started && <><button className="quiz-pattern-back" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver">‹</button><div className="quiz-pattern-brand"><img src="/assets/logo-la-exclusiva-real-icon.png" alt=""/><b>La Exclusiva</b><small>CAFETERÍA</small></div><h1>QUIZ</h1><p className="quiz-pattern-sub">¿CUÁNTO SABES DE EL COTO?</p></>}
+    {started && q && !summary && <div className="quiz-live-card">
+      <div className="quiz-live-head"><span>{q.category}</span><b>{n+1}/5</b></div>
+      <div className="quiz-progress"><i style={{width:`${((n+1)/5)*100}%`}}/></div>
+      <h2>{q.question}</h2>
+      <div className="quiz-live-answers">{q.options.map((a,i)=>{
+        const cls = feedback
+          ? (i===feedback.correctIndex ? "answer-correct" : i===feedback.chosen ? "answer-wrong" : "")
+          : (selected===i ? "selected" : "");
+        return <button key={i} className={cls} disabled={locked||busy} onClick={()=>choose(i)}><span>{String.fromCharCode(65+i)}</span>{a}{feedback && i===feedback.correctIndex && <b className="answer-mark">✓</b>}{feedback && i===feedback.chosen && !feedback.isCorrect && <b className="answer-mark">✕</b>}</button>;
+      })}</div>
+      <small className={feedback ? (feedback.isCorrect?"quiz-feedback-ok":"quiz-feedback-bad") : ""}>{feedback ? (feedback.isCorrect ? "✓ ¡CORRECTO!" : "✕ INCORRECTO · La respuesta correcta está marcada en verde") : "Elige una respuesta."}</small>
+    </div>}
+    {summary && <div className="quiz-summary"><b>{summary.score}/5</b><h2>{summary.perfect?"¡QUIZ PERFECTO!":"DÍA 12 SELLADO"}</h2><p>{summary.perfect?"Has acertado las 5 y has optado al premio instantáneo.":"Tu participación cuenta para el sorteo final. Para optar al premio instantáneo había que acertar las 5."}</p><strong>{summary.won?`🎁 ${summary.prize_name ?? "¡Premio!"}`:summary.message}</strong>{ROULETTE_PREVIEW_ENABLED && <button className="quiz-pattern-cta" onClick={()=>{sound("click");startLocalPreviewQuiz();}}>PROBAR OTRA VEZ　›</button>}</div>}
+  </section>;
+}
+
+function Boxes({ busy, played, registered, phoneMasked, setView, soundOn, onToggleSound, play }: { busy: boolean; played: boolean; registered: boolean; phoneMasked?: string; setView: (v: View) => void; soundOn: boolean; onToggleSound: () => void; play: (choice: string) => Promise<GameResult | null> }) {
+  const [pick, setPick] = useState<number | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [boxResult, setBoxResult] = useState<GameResult | null>(null);
+
+  function resetBox() {
+    sound("click");
+    setPick(null);
+    setOpening(false);
+    setBoxResult(null);
+  }
+
+  async function choose(n: number) {
+    if (!registered) {
+      alert("Regístrate primero para poder participar.");
+      return;
+    }
+    if (pick !== null || busy || opening || (played && !ROULETTE_PREVIEW_ENABLED)) return;
+    setPick(n);
+    setOpening(true);
+    setBoxResult(null);
+    sound("open");
+    if (navigator.vibrate) navigator.vibrate([35, 25, 55]);
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const r = await play(String(n));
+      if (!r) {
+        setPick(null);
+        setOpening(false);
+        return;
+      }
+      setOpening(false);
+      setBoxResult(r);
+      if ((r as any).won) {
+        sound("win");
+        if (navigator.vibrate) navigator.vibrate([80, 45, 120, 45, 180]);
+      } else {
+        sound("correct");
+      }
+    } catch {
+      setPick(null);
+      setOpening(false);
     }
   }
 
-  return <Card tone="teal" tag="DÍA 12 SEPTIEMBRE" title="EL RETO DEL COTO" sub={played ? "Reto completado" : "Pon a prueba lo que sabes sobre La Exclusiva"}>
-    <div className="quiz"><div className="quiz-progress"><i style={{width:`${((n+1)/3)*100}%`}}/></div><small>Pregunta {n + 1} de 3</small><h2>{q[0]}</h2>{q[1].map((answer, i) => <button disabled={played || locked || busy} onClick={() => choose(i)} className={selected === i ? (i === q[2] ? "good" : "bad") : ""} key={answer}>{answer}{selected === i && i === q[2] ? " ✓" : ""}</button>)}</div>
-    {played && <div className="completed-pill">✓ YA COMPLETADO</div>}
-  </Card>;
+  const isLocked = played && !ROULETTE_PREVIEW_ENABLED;
+  const nav = (view: View) => { sound("click"); setView(view); };
+
+  return <section className="box13-v198" aria-label="Caja Sorpresa · Día 13">
+    <div className="box13-v198-art-wrap">
+      <img className="box13-v198-art" src="/assets/day13-box-v198-approved.png" alt="Caja Sorpresa · Elige una caja y descubre tu suerte" />
+
+      <button className="box13-v198-hot back" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver" />
+      <button className="box13-v198-hot sound" onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"} />
+      {!soundOn && <div className="box13-v198-sound-off" aria-hidden="true"><VolumeX /></div>}
+
+      {[1,2,3,4,5,6].map((n)=><button
+        key={n}
+        className={`box13-v198-hot gift gift-${n} ${pick===n?"is-picked":""}`}
+        disabled={busy || opening || pick!==null || isLocked}
+        onClick={()=>choose(n)}
+        aria-label={`Elegir caja ${n}`}
+      />)}
+
+      <button className="box13-v198-hot nav-home" onClick={()=>nav("home")} aria-label="Inicio" />
+      <button className="box13-v198-hot nav-passport" onClick={()=>nav("passport")} aria-label="Pasaporte" />
+      <button className="box13-v198-hot nav-games" onClick={()=>nav("games")} aria-label="Juegos" />
+      <button className="box13-v198-hot nav-photo" onClick={()=>nav("photo")} aria-label="Fotomatón" />
+
+      <div className={`box13-v198-registration ${registered ? "is-registered" : "is-unregistered"}`}>
+        {registered ? <><b>✓ YA ESTÁS REGISTRADO</b><span>{phoneMasked ?? "Tu teléfono"} · Una participación por persona y día.</span></> : <><b>PARTICIPA SIN SMS Y SIN COSTE</b><span>Regístrate desde Inicio antes de elegir tu caja.</span><button onClick={()=>nav("home")}>IR A INICIO</button></>}
+      </div>
+
+      {isLocked && <div className="box13-v198-lock">✓ YA HAS JUGADO EL DÍA 13</div>}
+
+      {opening && <div className="box13-v198-opening"><span>🎁</span><b>ABRIENDO TU CAJA…</b><small>EXCLU está comprobando tu suerte</small></div>}
+
+      {boxResult && <div className={`box13-v198-result ${(boxResult as any).won?"winner":"no-winner"}`}>
+        <div className="box13-v198-result-icon">{(boxResult as any).won ? ((boxResult as any).prize_icon || "🎁") : "🎟️"}</div>
+        <h2>{(boxResult as any).won ? "¡HAS GANADO!" : "¡PARTICIPACIÓN GUARDADA!"}</h2>
+        <p>{(boxResult as any).won ? ((boxResult as any).prize_name || "Premio instantáneo") : "Esta vez no había premio instantáneo, pero el Día 13 queda sellado y tu participación cuenta para el sorteo final."}</p>
+        {(boxResult as any).won && (boxResult as any).prize_description && <small>{(boxResult as any).prize_description}</small>}
+        {(boxResult as any).reward_code && <code>{(boxResult as any).reward_code}</code>}
+        {ROULETTE_PREVIEW_ENABLED && <button onClick={resetBox}>PROBAR OTRA VEZ　›</button>}
+      </div>}
+    </div>
+  </section>;
 }
 
-function Boxes({ busy, played, play }: { busy: boolean; played: boolean; play: (choice: string) => Promise<GameResult | null> }) {
-  const [pick, setPick] = useState<number | null>(null);
-  async function choose(n: number) {
-    if (pick || busy || played) return;
-    setPick(n); sound("open");
-    await new Promise((r) => setTimeout(r, 1500));
-    try { await play(String(n)); } catch { setPick(null); }
-  }
-  return <Card tone="purple" tag="DÍA 13 SEPTIEMBRE" title="LA CAJA FUERTE DEL PREMIO FINAL" sub={played ? "Ya abriste tu caja de este día" : "Elige una caja y descubre tu premio"}>
-    <h2 className="choose">ELIGE TU CAJA</h2>
-    <div className="boxes">{[1,2,3].map((n) => <button className={pick === n ? "picked" : ""} disabled={played || busy || pick !== null} onClick={() => choose(n)} key={n}><span className="box-lid">🎁</span><b>{n}</b><em>✦</em></button>)}</div>
-    {pick && !played && <p>EXCLU está abriendo la caja {pick}…</p>}
-    {played && <div className="completed-pill">✓ YA COMPLETADO</div>}
-  </Card>;
-}
-
-function Passport({ status }: { status: FestivalStatus }) {
+function Passport({ status, setView }: { status: FestivalStatus; setView: (v: View) => void }) {
   const rawPlayedDays = new Set((status.played_days ?? []).map((d) => Number(d.day)));
 
   const madridParts = new Intl.DateTimeFormat("en-GB", {
@@ -937,18 +1805,10 @@ function Passport({ status }: { status: FestivalStatus }) {
       if (isPlayedDayValidForDisplay(day)) return "done";
       return forcedTestDay === day ? "open" : "locked";
     }
-
     if (beforeFestival) return "locked";
     if (isPlayedDayValidForDisplay(day)) return "done";
-
-    if (year === 2026 && month === 9 && today === day) {
-      return "open";
-    }
-
-    if (afterFestival || (year === 2026 && month === 9 && today > day)) {
-      return "missed";
-    }
-
+    if (year === 2026 && month === 9 && today === day) return "open";
+    if (afterFestival || (year === 2026 && month === 9 && today > day)) return "missed";
     return "locked";
   }
 
@@ -961,108 +1821,67 @@ function Passport({ status }: { status: FestivalStatus }) {
   const visibleCompleted = dayConfig.filter(({ day }) => isPlayedDayValidForDisplay(day)).length;
   const passportComplete = visibleCompleted === 3;
   const raffleEntries = beforeFestival && forcedTestDay === null ? 0 : (status.raffle_entries ?? 0);
+  const progress = Math.round((visibleCompleted / 3) * 100);
+
+  const dayStateText = (state: PassportDayState) => {
+    if (state === "done") return "COMPLETADO";
+    if (state === "open") return status.registered ? "DISPONIBLE HOY" : "REGÍSTRATE";
+    if (state === "missed") return "FINALIZADO";
+    return "BLOQUEADO";
+  };
 
   return (
-    <main className="passport-screen" aria-label="Pasaporte EXCLU">
-      <section className="passport-book">
-        <header className="passport-book__brand">
-          <div className="passport-book__brand-mark">
-            <img src="/assets/logo-la-exclusiva-real-icon.png" alt="" aria-hidden="true" />
-          </div>
-          <div className="passport-book__brand-text">
-            <strong>La Exclusiva</strong>
-            <span>CAFETERÍA</span>
-          </div>
-        </header>
+    <main className="passport-v176" aria-label="Tu Pasaporte La Exclusiva">
+      <section className="passport-v176__visual">
+        <img
+          className="passport-v176__art"
+          src="/assets/passport-v176-approved-top.png"
+          alt="Tu Pasaporte de La Exclusiva para las fiestas de El Coto"
+        />
 
-        <div className="passport-book__rule" />
+        <button
+          className="passport-v176__back-hot"
+          onClick={() => { sound("click"); setView("home"); }}
+          aria-label="Volver"
+        />
 
-        <div className="passport-book__hero">
-          <div>
-            <span className="passport-book__eyebrow">PASAPORTE EXCLU</span>
-            <h1>TU PASAPORTE</h1>
-            <p>
-              Completa los tres días de fiesta y consigue
-              <strong> +2 participaciones extra</strong> para el sorteo final.
-            </p>
-          </div>
-
-          <div className="passport-book__cover" aria-hidden="true">
-            <div className="passport-book__cover-logo">
-              <PassportGlyph />
+        {dayConfig.map(({ day }) => {
+          const state = getDayState(day);
+          if (state === "locked") return null;
+          return (
+            <div
+              key={day}
+              className={`passport-v176__day-state passport-v176__day-state--${day} is-${state}`}
+              aria-label={`Día ${day}: ${dayStateText(state)}`}
+            >
+              {state === "done" && <span className="passport-v176__day-check">✓</span>}
+              <b>{dayStateText(state)}</b>
             </div>
-            <strong>EXCLU</strong>
-            <span>PASAPORTE</span>
-          </div>
-        </div>
+          );
+        })}
 
-        <div className="passport-book__divider" />
+        {progress > 0 && (
+          <span className="passport-v176__progress-fill" style={{ width: `${progress * 0.392}%` }} aria-hidden="true" />
+        )}
+        {(visibleCompleted > 0 || raffleEntries > 0) && (
+          <>
+            <b className="passport-v176__progress-count">{visibleCompleted} de 3 sellos</b>
+            <b className="passport-v176__stamps-count">{visibleCompleted}/3</b>
+            <b className="passport-v176__entries-count">{raffleEntries}</b>
+          </>
+        )}
 
-        <div className="passport-book__days">
-          {dayConfig.map(({ day, dayLabel, dateLabel }) => {
-            const state = getDayState(day);
-            const isDone = state === "done";
-            const isOpen = state === "open";
-
-            return (
-              <article
-                key={day}
-                className={`passport-book__day is-${state}`}
-                aria-label={`${dayLabel} ${dateLabel}`}
-              >
-                <div className="passport-book__stamp">
-                  {isDone ? (
-                    <CheckCircle2 size={31} strokeWidth={2.6} />
-                  ) : (
-                    <LockKeyhole size={25} strokeWidth={2.1} />
-                  )}
-                </div>
-                <strong>{dayLabel}</strong>
-                <span>{dateLabel}</span>
-                <small>
-                  {isDone
-                    ? "COMPLETADO"
-                    : isOpen
-                      ? (status.registered ? "DISPONIBLE HOY" : "REGÍSTRATE")
-                      : state === "missed"
-                        ? "FINALIZADO"
-                        : "BLOQUEADO"}
-                </small>
-              </article>
-            );
-          })}
-        </div>
-
-        <div className={`passport-book__reward ${passportComplete ? "is-complete" : ""}`}>
-          <Gift size={26} />
-          <div>
-            <strong>{passportComplete ? "¡PASAPORTE COMPLETO!" : "COMPLETA LOS 3 DÍAS"}</strong>
-            <span>
-              {passportComplete
-                ? "Tus +2 participaciones extra ya están añadidas."
-                : "+2 PARTICIPACIONES EXTRA PARA EL SORTEO FINAL"}
-            </span>
-          </div>
-        </div>
-
-        <div className="passport-book__footer">
-          <div>
-            <span>SELLOS</span>
-            <strong>{visibleCompleted}/3</strong>
-          </div>
-          <div className="passport-book__footer-separator" />
-          <div>
-            <span>PARTICIPACIONES</span>
-            <strong>{raffleEntries}</strong>
-          </div>
-        </div>
-
-        {forcedTestDay !== null && (
-          <div className="passport-book__test">
-            MODO PRUEBAS · DÍA {forcedTestDay} HABILITADO
+        {passportComplete && (
+          <div className="passport-v176__complete-banner">
+            <Gift size={20}/>
+            <div><b>¡PASAPORTE COMPLETO!</b><span>+2 participaciones extra añadidas al sorteo final</span></div>
           </div>
         )}
       </section>
+
+      {forcedTestDay !== null && (
+        <div className="passport-v176__test">MODO PRUEBAS · DÍA {forcedTestDay} HABILITADO</div>
+      )}
     </main>
   );
 }
@@ -1083,7 +1902,6 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const pinchZoomStartRef=useRef(1);
   const [photoUrl,setPhotoUrl]=useState<string|null>(null);
   const [facing,setFacing]=useState<"user"|"environment">("user");
-  const [flash,setFlash]=useState(false);
   const [frame,setFrame]=useState("classic");
   const [sticker,setSticker]=useState("exclu");
   type PlacedSticker = {
@@ -1106,6 +1924,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     startScale:number;
   }|null>(null);
   const [filter,setFilter]=useState("normal");
+  const [photoAction,setPhotoAction]=useState<"save"|"share"|"repeat">("share");
 
   const frameIds=["classic","party","selfie","cheers","good","team","asturias"];
   const approvedFrameAssets:Record<string,string>={
@@ -1123,6 +1942,61 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     party:"saturate(1.6) hue-rotate(12deg)",vintage:"sepia(.6) saturate(.8)",
     neon:"saturate(1.9) contrast(1.2) hue-rotate(-18deg)"
   };
+
+  // 152 · Aplicación real del filtro a la foto capturada.
+  // No dependemos de CanvasRenderingContext2D.filter porque en algunos móviles
+  // (especialmente Safari/iOS) el vídeo puede verse filtrado pero el JPEG salir normal.
+  function applyCapturedFilter(ctx:CanvasRenderingContext2D,w:number,h:number,kind:string){
+    if(kind==="normal")return;
+    const img=ctx.getImageData(0,0,w,h);
+    const d=img.data;
+    const clamp=(n:number)=>Math.max(0,Math.min(255,n));
+
+    for(let i=0;i<d.length;i+=4){
+      let r=d[i],g=d[i+1],b=d[i+2];
+      const saturate=(amount:number)=>{
+        const l=.2126*r+.7152*g+.0722*b;
+        r=l+(r-l)*amount; g=l+(g-l)*amount; b=l+(b-l)*amount;
+      };
+      const sepia=(amount:number)=>{
+        const sr=.393*r+.769*g+.189*b;
+        const sg=.349*r+.686*g+.168*b;
+        const sb=.272*r+.534*g+.131*b;
+        r=r*(1-amount)+sr*amount;
+        g=g*(1-amount)+sg*amount;
+        b=b*(1-amount)+sb*amount;
+      };
+      const contrast=(amount:number)=>{
+        r=(r-128)*amount+128;
+        g=(g-128)*amount+128;
+        b=(b-128)*amount+128;
+      };
+
+      if(kind==="bw"){
+        const l=.299*r+.587*g+.114*b; r=g=b=l;
+      }else if(kind==="warm"){
+        saturate(1.2); sepia(.28);
+      }else if(kind==="party"){
+        saturate(1.6);
+        // Aproximación estable al hue-rotate(12deg) del preview.
+        const nr=r*1.05+g*.02;
+        const ng=g*1.02+b*.015;
+        const nb=b*.94+r*.015;
+        r=nr;g=ng;b=nb;
+      }else if(kind==="vintage"){
+        sepia(.6); saturate(.8); contrast(.96);
+      }else if(kind==="neon"){
+        saturate(1.9); contrast(1.2);
+        const nr=r*1.03+b*.025;
+        const ng=g*.97+r*.015;
+        const nb=b*1.08;
+        r=nr;g=ng;b=nb;
+      }
+
+      d[i]=clamp(r); d[i+1]=clamp(g); d[i+2]=clamp(b);
+    }
+    ctx.putImageData(img,0,0);
+  }
 
   async function stopCamera(){
     const current=streamRef.current;
@@ -1516,117 +2390,254 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     }
   }
 
+  const photoBlobRef=useRef<Blob|null>(null);
+  const [capturing,setCapturing]=useState(false);
+
+  function waitForVideoFrame(video:HTMLVideoElement, timeoutMs=2200){
+    if(video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0){
+      return Promise.resolve(true);
+    }
+    return new Promise<boolean>((resolve)=>{
+      let settled=false;
+      const finish=(ok:boolean)=>{
+        if(settled)return;
+        settled=true;
+        video.removeEventListener("loadeddata",onReady);
+        video.removeEventListener("canplay",onReady);
+        resolve(ok);
+      };
+      const onReady=()=>{
+        if(video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0)finish(true);
+      };
+      video.addEventListener("loadeddata",onReady);
+      video.addEventListener("canplay",onReady);
+      window.setTimeout(()=>finish(video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0),timeoutMs);
+    });
+  }
+
+  function loadFrameWithTimeout(src:string, timeoutMs=1200){
+    return new Promise<HTMLImageElement>((resolve,reject)=>{
+      const img=new Image();
+      let settled=false;
+      const finishOk=()=>{ if(settled)return; settled=true; resolve(img); };
+      const finishError=(err:unknown)=>{ if(settled)return; settled=true; reject(err); };
+      img.onload=finishOk;
+      img.onerror=()=>finishError(new Error(`No se pudo cargar ${src}`));
+      img.src=src;
+      if(img.complete && img.naturalWidth>0)finishOk();
+      window.setTimeout(()=>finishError(new Error(`Timeout cargando ${src}`)),timeoutMs);
+    });
+  }
+
   async function capture(){
+    if(capturing)return;
     const v=videoRef.current,c=canvasRef.current;
-    if(!v||!c||!cameraOn||v.readyState<2)return;
+    if(!v||!c)return;
 
-    const vw=v.videoWidth||1080;
-    const vh=v.videoHeight||1440;
+    setCapturing(true);
+    try{
+      // En Safari/iPhone la cámara puede verse pero tardar unas décimas en exponer
+      // un frame utilizable al canvas. Esperamos un poco en vez de fallar en silencio.
+      if(!cameraOn){
+        await startCamera();
+      }
+      try{ await v.play(); }catch{}
+      const ready=await waitForVideoFrame(v);
+      if(!ready){
+        alert("La cámara todavía no está lista. Espera un segundo y vuelve a tocar el botón de foto.");
+        return;
+      }
 
-    // Misma proporción que el visor del Fotomatón.
-    const previewAspect=(45.90*1024)/(40.65*1536);
-    const outW=1080;
-    const outH=Math.round(outW/previewAspect);
+      const vw=v.videoWidth||1080;
+      const vh=v.videoHeight||1440;
 
-    c.width=outW;
-    c.height=outH;
+      // Misma proporción que el visor del Fotomatón.
+      const previewAspect=(45.90*1024)/(40.65*1536);
+      const outW=1080;
+      const outH=Math.round(outW/previewAspect);
 
-    const x=c.getContext("2d");
-    if(!x)return;
+      c.width=outW;
+      c.height=outH;
 
-    // Recorte "cover" idéntico al que ve el usuario en el <video>.
-    const sourceAspect=vw/vh;
-    let sx=0,sy=0,sw=vw,sh=vh;
-    if(sourceAspect>previewAspect){
-      sw=vh*previewAspect;
-      sx=(vw-sw)/2;
-    }else{
-      sh=vw/previewAspect;
-      sy=(vh-sh)/2;
+      const x=c.getContext("2d",{willReadFrequently:true});
+      if(!x)return;
+
+      // Recorte "cover" idéntico al que ve el usuario en el <video>.
+      const sourceAspect=vw/vh;
+      let sx=0,sy=0,sw=vw,sh=vh;
+      if(sourceAspect>previewAspect){
+        sw=vh*previewAspect;
+        sx=(vw-sw)/2;
+      }else{
+        sh=vw/previewAspect;
+        sy=(vh-sh)/2;
+      }
+
+      if(cameraZoom>1){
+        const baseSw=sw;
+        const baseSh=sh;
+        sw=baseSw/cameraZoom;
+        sh=baseSh/cameraZoom;
+        sx=sx+(baseSw-sw)/2;
+        sy=sy+(baseSh-sh)/2;
+      }
+
+      x.save();
+      if(facing==="user"){
+        x.translate(outW,0);
+        x.scale(-1,1);
+      }
+      x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
+      x.restore();
+
+      applyCapturedFilter(x,outW,outH,filter);
+
+      const border=Math.max(18,Math.round(outW*.02));
+      x.strokeStyle="#f6c51c";
+      x.lineWidth=border;
+      x.strokeRect(border/2,border/2,outW-border,outH-border);
+
+      const names:Record<string,string>={classic:"LA EXCLUSIVA",party:"RETRO",selfie:"SELFIE EXCLU",cheers:"BRINDIS",good:"BUEN ROLLO",team:"EL COTO DE FIESTA",asturias:"ASTURIAS"};
+      const topH=Math.round(outH*.075);
+      x.fillStyle="rgba(0,0,0,.68)";
+      x.fillRect(border,border,outW-border*2,topH);
+      x.fillStyle="#ffd329";
+      x.font=`700 ${Math.round(outW*.034)}px sans-serif`;
+      x.textAlign="center";
+      x.textBaseline="middle";
+      x.fillText(names[frame],outW/2,border+topH/2);
+
+      // Un marco lento jamás bloquea el disparo. Si ya está disponible se compone;
+      // si el túnel tarda demasiado, la foto se genera igualmente.
+      if(approvedFrameAssets[frame]){
+        try{
+          const frameImg=await loadFrameWithTimeout(approvedFrameAssets[frame],1200);
+          if(frameImg.naturalWidth>0)x.drawImage(frameImg,0,0,outW,outH);
+        }catch(err){
+          console.warn("Marco no disponible a tiempo; la foto continúa:",err);
+        }
+      }
+
+      for(const ps of placedStickers){
+        const glyph=stickerGlyphs[ps.kind]||ps.kind;
+        const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
+        const px=(ps.x/100)*outW;
+        const py=(ps.y/100)*outH;
+        const baseSize=isText?Math.round(outW*.048):Math.round(outW*.095);
+
+        x.save();
+        x.font=isText
+          ? `700 ${Math.round(baseSize*ps.scale)}px sans-serif`
+          : `${Math.round(baseSize*ps.scale)}px sans-serif`;
+        x.textAlign="center";
+        x.textBaseline="middle";
+        x.fillStyle="#ffd329";
+        x.fillText(glyph,px,py);
+        x.restore();
+      }
+
+      const dataUrl=c.toDataURL("image/jpeg",.92);
+      setPhotoAction("share");
+      setPhotoUrl(dataUrl);
+
+      // Dejamos el Blob preparado AHORA. Así Compartir/Guardar en iPhone se ejecutan
+      // directamente desde el toque del usuario y Safari no pierde la autorización.
+      const blob=await new Promise<Blob|null>((resolve)=>c.toBlob(resolve,"image/jpeg",.92));
+      photoBlobRef.current=blob;
+
+      onPhotoCreated();
+      navigator.vibrate?.(60);
+    }catch(err){
+      console.error("Error al hacer la foto:",err);
+      alert("No se ha podido hacer la foto. Comprueba el permiso de cámara e inténtalo de nuevo.");
+    }finally{
+      setCapturing(false);
     }
+  }
 
-    if(cameraZoom>1){
-      const baseSw=sw;
-      const baseSh=sh;
-      sw=baseSw/cameraZoom;
-      sh=baseSh/cameraZoom;
-      sx=sx+(baseSw-sw)/2;
-      sy=sy+(baseSh-sh)/2;
-    }
+  function photoFile(){
+    const blob=photoBlobRef.current;
+    return blob ? new File([blob],`exclu-fotomaton-${Date.now()}.jpg`,{type:"image/jpeg"}) : null;
+  }
 
-    x.save();
-    if(facing==="user"){
-      x.translate(outW,0);
-      x.scale(-1,1);
-    }
-    x.filter=filterCss[filter]||"none";
-    x.drawImage(v,sx,sy,sw,sh,0,0,outW,outH);
-    x.restore();
+  function downloadPhoto(){
+    if(!photoUrl)return;
+    const blob=photoBlobRef.current;
+    const href=blob?URL.createObjectURL(blob):photoUrl;
+    const a=document.createElement("a");
+    a.href=href;
+    a.download=`exclu-fotomaton-${Date.now()}.jpg`;
+    a.style.display="none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if(blob)window.setTimeout(()=>URL.revokeObjectURL(href),1500);
+  }
 
-    // Marco sobre la misma composición que se veía antes de disparar.
-    const border=Math.max(18,Math.round(outW*.02));
-    x.strokeStyle="#f6c51c";
-    x.lineWidth=border;
-    x.strokeRect(border/2,border/2,outW-border,outH-border);
+  async function save(){
+    setPhotoAction("save");
+    if(!photoUrl)return;
 
-    const names:Record<string,string>={classic:"LA EXCLUSIVA",party:"RETRO",selfie:"SELFIE EXCLU",cheers:"BRINDIS",good:"BUEN ROLLO",team:"EL COTO ESTÁ DE FIESTA",asturias:"ASTURIAS"};
-    const topH=Math.round(outH*.075);
-    x.fillStyle="rgba(0,0,0,.68)";
-    x.fillRect(border, border, outW-border*2, topH);
-    x.fillStyle="#ffd329";
-    x.font=`700 ${Math.round(outW*.034)}px sans-serif`;
-    x.textAlign="center";
-    x.textBaseline="middle";
-    x.fillText(names[frame],outW/2,border+topH/2);
+    const file=photoFile();
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
 
-    if(approvedFrameAssets[frame]){
+    // Safari/iOS no respeta de forma fiable <a download> para una foto generada.
+    // Abrimos la hoja nativa: ahí aparece "Guardar imagen" / "Guardar en Fotos".
+    if(isIOS && file && navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
       try{
-        const frameImg=new Image();
-        frameImg.src=approvedFrameAssets[frame];
-        await frameImg.decode();
-        x.drawImage(frameImg,0,0,outW,outH);
-      }catch(err){
-        console.error("No se pudo componer el marco:",err);
+        await navigator.share({title:"Fotomatón La Exclusiva",files:[file]});
+        return;
+      }catch(err:any){
+        if(err?.name==="AbortError")return;
+        console.warn("No se pudo abrir Guardar en iPhone:",err);
       }
     }
 
-    // Todos los stickers, respetando posición y tamaño.
-    for(const ps of placedStickers){
-      const glyph=stickerGlyphs[ps.kind]||ps.kind;
-      const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
-      const px=(ps.x/100)*outW;
-      const py=(ps.y/100)*outH;
-      const baseSize=isText?Math.round(outW*.048):Math.round(outW*.095);
-
-      x.save();
-      x.font=isText
-        ? `700 ${Math.round(baseSize*ps.scale)}px sans-serif`
-        : `${Math.round(baseSize*ps.scale)}px sans-serif`;
-      x.textAlign="center";
-      x.textBaseline="middle";
-      x.fillStyle="#ffd329";
-      x.fillText(glyph,px,py);
-      x.restore();
-    }
-
-    setPhotoUrl(c.toDataURL("image/jpeg",.92));
-    onPhotoCreated();
-    navigator.vibrate?.(60);
+    downloadPhoto();
   }
-  function save(){
-    if(!photoUrl)return;const a=document.createElement("a");a.href=photoUrl;a.download=`exclu-fotomaton-${Date.now()}.jpg`;a.click();
-  }
+
   async function share(){
+    setPhotoAction("share");
     if(!photoUrl)return;
-    try{const blob=await(await fetch(photoUrl)).blob();const file=new File([blob],"exclu-fotomaton.jpg",{type:"image/jpeg"});
-      if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]})))await navigator.share({title:"Fotomatón La Exclusiva",files:[file]});else save();
-    }catch{}
+
+    const file=photoFile();
+    try{
+      if(file && navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+        await navigator.share({title:"Fotomatón La Exclusiva",text:"Mi foto de EXCLU FEST",files:[file]});
+        return;
+      }
+      downloadPhoto();
+    }catch(err:any){
+      if(err?.name!=="AbortError")console.warn("Compartir no disponible:",err);
+    }
+  }
+
+  async function repeatPhoto(){
+    setPhotoAction("repeat");
+    if(!photoUrl)return;
+    setPhotoUrl(null);
+    photoBlobRef.current=null;
+    setActiveStickerId(null);
+
+    // Si iOS ha suspendido el stream al abrir Compartir/Guardar, lo recuperamos.
+    const live=streamRef.current?.getVideoTracks().some(t=>t.readyState==="live");
+    if(!live){
+      setCameraOn(false);
+      await startCamera(facing);
+    }else{
+      setCameraOn(true);
+      setCameraActivated(true);
+      try{await videoRef.current?.play();}catch{}
+    }
   }
   useEffect(()=>()=>{ streamRef.current?.getTracks().forEach(t=>t.stop()); },[]);
 
   return <main className="photo112">
     <div className="photo112-stage" data-facing={facing}>
       <img className="photo112-art" src="/assets/fotomaton-definitivo-aprobado.png" alt="Fotomatón La Exclusiva"/>
+      <div className="p112-frame-visible-label p112-frame-visible-label-party" aria-hidden="true">Fiestas Retro</div>
+      <div className="p112-frame-visible-label p112-frame-visible-label-team" aria-hidden="true">El Coto de Fiesta</div>
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
       <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
@@ -1702,7 +2713,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
             selfie:"Selfie EXCLU",
             cheers:"Brindis",
             good:"Buen Rollo",
-            team:"El Coto está de fiesta",
+            team:"El Coto de Fiesta",
             asturias:"Asturias"
           };
           return <button key={id} className={frame===id?"active":""} style={{top:`${i*14.2857}%`}} onClick={()=>setFrame(id)} aria-label={`Marco ${labels[id]}`}/>;
@@ -1716,28 +2727,82 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       </div>
 
       <button className={`p112-switch ${cameraSwitching?"switching":""}`} onClick={switchCamera} disabled={cameraSwitching} aria-label={facing==="user"?"Cambiar a cámara trasera":"Cambiar a cámara frontal"}/>
-      <button className="p112-shot" onClick={()=>{if(!cameraActivated){startCamera();return;} if(!cameraSwitching&&cameraOn)capture();}} aria-label="Hacer foto"/>
-      <button className={`p112-flash ${flash?"active":""}`} onClick={()=>setFlash(v=>!v)} aria-label="Flash"/>
-      {photoUrl&&<>
-        <button className="p112-save" onClick={save} aria-label="Guardar"/>
-        <button className="p112-share" onClick={share} aria-label="Compartir"/>
-        <button className="p112-repeat" onClick={()=>setPhotoUrl(null)} aria-label="Repetir"/>
-      </>}
+      <button
+        className={`p112-shot ${capturing?"capturing":""}`}
+        onClick={async ()=>{
+          if(cameraSwitching||capturing)return;
+          if(!cameraActivated||!cameraOn){
+            await startCamera();
+            return;
+          }
+          await capture();
+        }}
+        disabled={cameraSwitching||capturing}
+        aria-label={capturing?"Procesando foto":"Hacer foto"}
+      />
+      <button className={`p112-save p112-photo-action ${photoAction==="save"?"selected":""}`} onClick={save} aria-label="Guardar"><Download className="p112-action-icon"/><span>Guardar</span></button>
+      <button className={`p112-share p112-photo-action ${photoAction==="share"?"selected":""}`} onClick={share} aria-label="Compartir"><Share2 className="p112-action-icon"/><span>Compartir</span></button>
+      <button className={`p112-repeat p112-photo-action ${photoAction==="repeat"?"selected":""}`} onClick={repeatPhoto} aria-label="Repetir"><RefreshCw className="p112-action-icon"/><span>Repetir</span></button>
+
+      {/* 148 · Hotspots reales sobre la navegación que forma parte del arte del fotomatón.
+          El diseño no cambia: estos botones transparentes dan funcionalidad a los 4 iconos. */}
+      <button className="p112-nav-home" onClick={()=>{sound("click");stopCamera();setView("home")}} aria-label="Inicio"/>
+      <button className="p112-nav-passport" onClick={()=>{sound("click");stopCamera();setView("passport")}} aria-label="Pasaporte"/>
+      <button className="p112-nav-games" onClick={()=>{sound("click");stopCamera();setView("games")}} aria-label="Juegos"/>
+      <button className="p112-nav-photo" onClick={()=>sound("click")} aria-label="Fotomatón"/>
+
       <canvas ref={canvasRef} hidden/>
     </div>
   </main>;
 }
 
 function Card({ tone, tag, title, sub, children }: any) {
-  return <section className={`card ${tone}`}><span className="tag">{tag}</span><h1>{title}</h1><p>{sub}</p>{children}<img className="robot" src="/assets/exclu-robot-premium.png" alt="EXCLU" /></section>;
+  return <section className={`card ${tone}`}><span className="tag">{tag}</span><h1>{title}</h1><p>{sub}</p>{children}<img className="robot" src="/assets/exclu-approved-photobooth.png" alt="EXCLU" /></section>;
 }
 
-function Prizes({ status }: { status: FestivalStatus }) {
+function Prizes({ status, setView }: { status: FestivalStatus; setView: (v: View) => void }) {
   const rewards = status.rewards ?? [];
-  return <Card tone="orange" tag="PREMIOS" title="MIS PREMIOS" sub="Tus premios y participaciones están guardados en Supabase">
-    <div className="prize-summary"><div><Ticket/><b>{status.raffle_entries ?? 0}</b><span>participaciones sorteo</span></div><div><Gift/><b>{rewards.length}</b><span>premios instantáneos</span></div></div>
-    <div className="list">{rewards.length === 0 ? <p>🎟️ Todavía no tienes premios instantáneos. Tus participaciones para los 3 desayunos para dos siguen contando.</p> : rewards.map((r) => <div className="reward-row" key={r.reward_code}><span>{r.icon}</span><div><b>{r.name}</b><code>{r.reward_code}</code></div><em className={r.status}>{r.status === "redeemed" ? "CANJEADO" : "PENDIENTE"}</em></div>)}</div>
-  </Card>;
+  const raffleEntries = status.raffle_entries ?? 0;
+  return <section className="prizes-final" aria-label="Mis premios">
+    <div className="prizes-final-shell">
+      <header className="prizes-final-header">
+        <div className="prizes-final-brand" aria-label="La Exclusiva Cafetería">
+          <img src="/assets/logo-la-exclusiva-real-icon.png" alt="Logo La Exclusiva" />
+          <div><strong>La Exclusiva</strong><span>CAFETERÍA</span></div>
+        </div>
+        <h1>MIS PREMIOS</h1>
+        <p>Aquí puedes ver todos tus premios y participaciones.</p>
+      </header>
+
+      <div className="prizes-final-hero" aria-hidden="true">
+        <img src="/assets/prizes-hero-approved.png" alt="" />
+      </div>
+
+      <div className="prizes-final-summary">
+        <div className="raffle"><Ticket/><b>{raffleEntries}</b><span>participaciones<br/>sorteo</span></div>
+        <div className="instant"><Gift/><b>{rewards.length}</b><span>premios<br/>instantáneos</span></div>
+      </div>
+
+      <div className="prizes-final-list">
+        {rewards.length === 0 ? (
+          <div className="prizes-final-empty">
+            <div className="prizes-final-empty-icon"><Gift/></div>
+            <b>Todavía no tienes premios</b>
+            <p>Cuando consigas un premio en la ruleta, aparecerá aquí con su código para canjearlo en La Exclusiva.</p>
+            <button className="prizes-final-play" onClick={()=>{sound("click");setView("games")}}>
+              <Gamepad2/><span><strong>¡Sigue jugando!</strong><small>Cada día tienes nuevas oportunidades de conseguir premios increíbles.</small></span>
+            </button>
+          </div>
+        ) : rewards.map((r) => (
+          <div className="prizes-final-row" key={r.reward_code}>
+            <span className="prizes-final-row-icon">{r.icon}</span>
+            <div className="prizes-final-row-copy"><b>{r.name}</b><small>Código de canje</small><code>{r.reward_code}</code></div>
+            <em className={r.status}>{r.status === "redeemed" ? "CANJEADO" : "PENDIENTE"}</em>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>;
 }
 
 function Result({ result, onBack }: { result: GameResult; onBack: () => void }) {
@@ -1752,7 +2817,7 @@ function Result({ result, onBack }: { result: GameResult; onBack: () => void }) 
       <div className="celebration-kicker">EXCLU FEST · LA EXCLUSIVA</div>
       <h1>{result.already_played ? "¡YA JUGASTE HOY!" : result.won ? "¡ENHORABUENA!" : "¡SIGUES EN EL SORTEO!"}</h1>
       {result.won && <h2>¡HAS GANADO!</h2>}
-      <img className="celebration-robot" src="/assets/exclu-robot-premium.png" alt="EXCLU celebrando"/>
+      <img className="celebration-robot" src="/assets/exclu-approved-photobooth.png" alt="EXCLU celebrando"/>
       <div className="prize-burst">
         <strong>{result.prize_icon ? `${result.prize_icon} ` : ""}{result.prize_name || result.message || "Tu participación ha quedado registrada."}</strong>
         {result.prize_description && <small>{result.prize_description}</small>}
@@ -1926,7 +2991,7 @@ function AdminPanel() {
     } finally { setBusy(false); }
   }
 
-  if (!ready) return <div className="admin admin-loading"><div><img src="/assets/exclu-robot-premium.png" alt="EXCLU"/><p>Abriendo el panel…</p></div></div>;
+  if (!ready) return <div className="admin admin-loading"><div><img src="/assets/exclu-approved-photobooth.png" alt="EXCLU"/><p>Abriendo el panel…</p></div></div>;
 
   if (!admin) {
     const sql = userId ? `insert into public.admin_users(user_id) values ('${userId}') on conflict do nothing;` : "";
