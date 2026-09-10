@@ -25,7 +25,8 @@ function BottomNav({ view, setView, photoCount }: { view: View; setView: (v: Vie
 }
 
 const FESTIVAL = "exclu-fest-2026";
-const ROULETTE_PREVIEW_ENABLED = true; // TEMPORAL: desactivar al cerrar las pruebas
+const ROULETTE_PREVIEW_ENABLED = false; // PRODUCCIÓN
+const FORCE_REAL_BACKEND_TEST = false; // PRODUCCIÓN
 
 function sound(kind: "click" | "spin" | "win" | "lose" | "correct" | "wrong" | "open" = "click") {
   if (localStorage.getItem("exclu_sound") === "off") return;
@@ -86,6 +87,8 @@ type GameResult = {
   prize_description?: string | null;
   prize_icon?: string | null;
   reward_code?: string | null;
+  reward_type?: "physical" | "raffle_tickets" | null;
+  raffle_ticket_qty?: number;
   raffle_entries?: number;
   passport_complete?: boolean;
   message?: string;
@@ -238,7 +241,7 @@ function Customer() {
 
     // En modo pruebas, si este día ya fue registrado en Supabase, permitimos repetir
     // la experiencia tantas veces como sea necesario sin duplicar participaciones reales.
-    if (ROULETTE_PREVIEW_ENABLED && played.has(testDay)) {
+    if (ROULETTE_PREVIEW_ENABLED && !FORCE_REAL_BACKEND_TEST && played.has(testDay)) {
       const won = gameType === "box" ? Math.random() < 0.5 : false;
       const previewResult = {
         already_played: false,
@@ -1281,7 +1284,11 @@ function RoulettePrizePopup({ result, onClose }: { result: GameResult; onClose: 
           </div>
         </div>
 
-        <code className="roulette-prize-v084__code">{result.reward_code}</code>
+        {result.reward_code ? (
+          <code className="roulette-prize-v084__code">{result.reward_code}</code>
+        ) : result.reward_type === "raffle_tickets" ? (
+          <div className="roulette-prize-v084__code">🎟️ PARTICIPACIÓN AÑADIDA</div>
+        ) : null}
 
         <button
           className="roulette-prize-v084__ok"
@@ -1291,6 +1298,64 @@ function RoulettePrizePopup({ result, onClose }: { result: GameResult; onClose: 
       </div>
     </div>
   );
+}
+
+type RouletteSectorKind = "gift" | "ticket" | "star" | "coffee";
+
+// Orden REAL de los 12 sectores de roulette-approved-wheel.png,
+// empezando arriba (bajo el puntero) y avanzando en sentido horario.
+const ROULETTE_SECTORS: RouletteSectorKind[] = [
+  "gift",   // 0
+  "ticket", // 1
+  "star",   // 2
+  "gift",   // 3
+  "coffee", // 4
+  "gift",   // 5
+  "coffee", // 6
+  "star",   // 7
+  "ticket", // 8
+  "coffee", // 9
+  "gift",   // 10
+  "coffee", // 11
+];
+
+// Premios físicos que harán caer la ruleta en una estrella.
+const STAR_PRIZES = new Set([
+  "Caja 6 copas 1906",
+  "Caja 6 vasos sidra Barceló",
+  "Caja 6 copas Victoria",
+  "Caja 6 copas Estrella Galicia",
+  "Caja tazas + platos (12 piezas)",
+  "Funda móvil",
+  "Camiseta Ballantine's",
+  "Gorra Martini",
+]);
+
+function rouletteKindForResult(result: GameResult | null): RouletteSectorKind {
+  // Si no hay premio instantáneo, el ticket representa la participación normal
+  // que ya se ha guardado para la Cesta MG.
+  if (!result?.won) return "ticket";
+
+  if (result.reward_type === "raffle_tickets") return "ticket";
+
+  if ((result.prize_name ?? "").trim().toLowerCase() === "café") {
+    return "coffee";
+  }
+
+  if (STAR_PRIZES.has((result.prize_name ?? "").trim())) {
+    return "star";
+  }
+
+  return "gift";
+}
+
+function randomRouletteSector(kind: RouletteSectorKind) {
+  const candidates = ROULETTE_SECTORS
+    .map((sector, index) => ({ sector, index }))
+    .filter((item) => item.sector === kind)
+    .map((item) => item.index);
+
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 function Wheel({ busy, played, registered, play, soundOn, onToggleSound }: { busy: boolean; played: boolean; registered: boolean; play: () => Promise<GameResult | null>; soundOn: boolean; onToggleSound: () => void }) {
@@ -1383,75 +1448,87 @@ function Wheel({ busy, played, registered, play, soundOn, onToggleSound }: { bus
     });
   }
 
-  async function go(){
-    if(phase!=="idle" || busy) return;
-    if(!registered){
-      document.getElementById("register")?.scrollIntoView({behavior:"smooth",block:"center"});
+  async function go() {
+    if (phase !== "idle" || busy) return;
+
+    if (!registered) {
+      document.getElementById("register")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    if(played && !ROULETTE_PREVIEW_ENABLED) return;
+
+    if (played && !ROULETTE_PREVIEW_ENABLED) return;
+
     setPrizePopup(null);
     setSpinMessage("");
     rouletteTick(1);
-    if(navigator.vibrate) navigator.vibrate([20,25,20]);
+    if (navigator.vibrate) navigator.vibrate([20, 25, 20]);
     setPhase("spin");
 
-    // El puntero permanece fijo. Solo gira la rueda y termina con el centro
-    // de un sector exactamente bajo la flecha superior.
-    const sectorAngle = 30;
-    const targetIndex = Math.floor(Math.random() * 12);
-    const currentNormalized = ((angleRef.current % 360) + 360) % 360;
-    const desiredNormalized = (360 - targetIndex * sectorAngle) % 360;
-    const correction = (desiredNormalized - currentNormalized + 360) % 360;
-    const targetAngle = angleRef.current + (8 * 360) + correction;
-
-    await animate(targetAngle,5200);
-    setPhase("saving");
     try {
       let gameResult: GameResult | null;
-      if (ROULETTE_PREVIEW_ENABLED) {
-        // Premios TEMPORALES de prueba vinculados al sector real donde se detiene la ruleta.
-        // Se sustituirán por el catálogo definitivo de Supabase cuando nos pases los premios finales.
-        // Orden REAL de los 12 sectores de la imagen aprobada, empezando arriba
-        // (bajo el puntero) y avanzando en sentido horario.
-        const previewPrizes = [
-          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" }, // 12:00
-          { prize_name: "PREMIO SORPRESA", prize_description: "Premio identificado con ticket", prize_icon: "🎟️" },
-          { prize_name: "PREMIO ESPECIAL", prize_description: "Premio identificado con estrella", prize_icon: "⭐" },
-          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" },
-          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
-          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" },
-          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
-          { prize_name: "PREMIO ESPECIAL", prize_description: "Premio identificado con estrella", prize_icon: "⭐" },
-          { prize_name: "PREMIO SORPRESA", prize_description: "Premio identificado con ticket", prize_icon: "🎟️" },
-          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
-          { prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁" },
-          { prize_name: "CAFÉ GRATIS", prize_description: "Cualquier café de la carta", prize_icon: "☕" },
+      let targetIndex: number;
+
+      if (ROULETTE_PREVIEW_ENABLED && !FORCE_REAL_BACKEND_TEST) {
+        // Preview visual: cada resultado coincide con el símbolo real donde cae la ruleta.
+        const previewPrizes: Array<GameResult & { sector: RouletteSectorKind }> = [
+          { won: true, day: 11, sector: "gift", prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁", reward_type: "physical" },
+          { won: true, day: 11, sector: "ticket", prize_name: "+1 papeleta", prize_description: "1 participación extra para la Cesta MG", prize_icon: "🎟️", reward_type: "raffle_tickets", raffle_ticket_qty: 1 },
+          { won: true, day: 11, sector: "star", prize_name: "PREMIO ESTRELLA", prize_description: "Premio especial de EXCLU FEST", prize_icon: "⭐", reward_type: "physical" },
+          { won: true, day: 11, sector: "gift", prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁", reward_type: "physical" },
+          { won: true, day: 11, sector: "coffee", prize_name: "Café", prize_description: "Café en Cafetería La Exclusiva", prize_icon: "☕", reward_type: "physical" },
+          { won: true, day: 11, sector: "gift", prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁", reward_type: "physical" },
+          { won: true, day: 11, sector: "coffee", prize_name: "Café", prize_description: "Café en Cafetería La Exclusiva", prize_icon: "☕", reward_type: "physical" },
+          { won: true, day: 11, sector: "star", prize_name: "PREMIO ESTRELLA", prize_description: "Premio especial de EXCLU FEST", prize_icon: "⭐", reward_type: "physical" },
+          { won: true, day: 11, sector: "ticket", prize_name: "+2 papeletas", prize_description: "2 participaciones extra para la Cesta MG", prize_icon: "🎟️", reward_type: "raffle_tickets", raffle_ticket_qty: 2 },
+          { won: true, day: 11, sector: "coffee", prize_name: "Café", prize_description: "Café en Cafetería La Exclusiva", prize_icon: "☕", reward_type: "physical" },
+          { won: true, day: 11, sector: "gift", prize_name: "REGALO EXCLU", prize_description: "Premio promocional de La Exclusiva", prize_icon: "🎁", reward_type: "physical" },
+          { won: true, day: 11, sector: "coffee", prize_name: "Café", prize_description: "Café en Cafetería La Exclusiva", prize_icon: "☕", reward_type: "physical" },
         ];
-        // El giro se programa para dejar exactamente targetIndex bajo la flecha fija.
-        // Usamos ese mismo índice como fuente del premio para evitar cualquier desfase visual.
-        const landedIndex = targetIndex;
-        const previewPrize = previewPrizes[landedIndex] ?? previewPrizes[0];
+
+        targetIndex = Math.floor(Math.random() * 12);
+        const previewPrize = previewPrizes[targetIndex] ?? previewPrizes[0];
+
         gameResult = {
-          won: true,
-          day: 11,
           ...previewPrize,
-          reward_code: makePreviewRewardCode(11),
-          message: "Premio de prueba",
+          reward_code: previewPrize.reward_type === "physical" ? makePreviewRewardCode(11) : null,
+          raffle_entries: previewPrize.reward_type === "raffle_tickets" ? (previewPrize.raffle_ticket_qty ?? 0) : 0,
+          message: "MODO PRUEBAS · Premio simulado",
         };
       } else {
+        // En producción / prueba real manda Supabase: decide premio y stock primero.
         gameResult = await play();
+
+        if (!gameResult) {
+          setPhase("idle");
+          return;
+        }
+
+        // La rueda solo representa visualmente el resultado real devuelto por Supabase.
+        targetIndex = randomRouletteSector(rouletteKindForResult(gameResult));
       }
 
-      if (gameResult?.won && gameResult.reward_code) {
+      // El puntero permanece fijo. Giramos hasta el centro exacto de un sector
+      // compatible con el resultado que ya conocemos.
+      const sectorAngle = 30;
+      const currentNormalized = ((angleRef.current % 360) + 360) % 360;
+      const desiredNormalized = (360 - targetIndex * sectorAngle) % 360;
+      const correction = (desiredNormalized - currentNormalized + 360) % 360;
+      const targetAngle = angleRef.current + (8 * 360) + correction;
+
+      await animate(targetAngle, 5200);
+      setPhase("saving");
+
+      if (gameResult.won) {
         playCelebration();
-        if(navigator.vibrate) navigator.vibrate([35,35,70,40,120]);
+        if (navigator.vibrate) navigator.vibrate([35, 35, 70, 40, 120]);
         setPrizePopup(gameResult);
-      } else if (gameResult) {
+      } else {
         sound("correct");
         setSpinMessage(gameResult.message || "Tu participación está registrada para el sorteo final.");
       }
-    } finally { setPhase("idle"); }
+    } finally {
+      setPhase("idle");
+    }
   }
 
   const label = !registered ? "REGÍSTRATE PARA JUGAR" : (played && !ROULETTE_PREVIEW_ENABLED) ? "✓ COMPLETADO" : phase!=="idle" || busy ? "¡GIRANDO!" : "¡JUGAR AHORA!";
@@ -1789,9 +1866,10 @@ function Passport({ status, setView }: { status: FestivalStatus; setView: (v: Vi
   type PassportDayState = "done" | "open" | "locked" | "missed";
 
   function isPlayedDayValidForDisplay(day: 11 | 12 | 13) {
-    if (forcedTestDay !== null) {
-      return rawPlayedDays.has(day) && day === forcedTestDay;
-    }
+    // Durante las pruebas, cualquier participación realmente registrada en
+    // Supabase debe mostrarse como sello completado.
+    if (status.test_mode) return rawPlayedDays.has(day);
+
     if (beforeFestival) return false;
     if (afterFestival) return rawPlayedDays.has(day);
     if (year === 2026 && month === 9) {
@@ -1801,10 +1879,12 @@ function Passport({ status, setView }: { status: FestivalStatus; setView: (v: Vi
   }
 
   function getDayState(day: 11 | 12 | 13): PassportDayState {
-    if (forcedTestDay !== null) {
-      if (isPlayedDayValidForDisplay(day)) return "done";
-      return forcedTestDay === day ? "open" : "locked";
+    if (status.test_mode) {
+      if (rawPlayedDays.has(day)) return "done";
+      if (forcedTestDay === day) return "open";
+      return "locked";
     }
+
     if (beforeFestival) return "locked";
     if (isPlayedDayValidForDisplay(day)) return "done";
     if (year === 2026 && month === 9 && today === day) return "open";
@@ -1903,7 +1983,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
   const [photoUrl,setPhotoUrl]=useState<string|null>(null);
   const [facing,setFacing]=useState<"user"|"environment">("user");
   const [frame,setFrame]=useState("classic");
-  const [sticker,setSticker]=useState("exclu");
+  const [sticker,setSticker]=useState<string|null>(null);
   type PlacedSticker = {
     id:string;
     kind:string;
@@ -2276,8 +2356,28 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     fiestas:"FIESTAS 2026"
   };
 
+  // Gafas como SVG propio: usamos exactamente el mismo recurso en el visor y
+  // en la foto final para evitar que Safari/iOS renderice el emoji de forma distinta.
+  const GLASSES_STICKER_SRC=`data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 128">
+      <defs>
+        <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5d6166"/>
+          <stop offset="0.45" stop-color="#2f3338"/>
+          <stop offset="1" stop-color="#090b0d"/>
+        </linearGradient>
+      </defs>
+      <path d="M18 22h116c19 0 30 11 30 28v8h-12c-6-7-14-11-25-11H42c-10 0-18 3-24 9V22Z" fill="#0a0b0d"/>
+      <path d="M302 22H186c-19 0-30 11-30 28v8h12c6-7 14-11 25-11h85c10 0 18 3 24 9V22Z" fill="#0a0b0d"/>
+      <path d="M25 45c0-9 8-16 18-16h92c12 0 21 8 21 20v17c0 33-22 55-57 55H78c-34 0-53-18-53-50V45Z" fill="url(#lens)" stroke="#050607" stroke-width="11"/>
+      <path d="M295 45c0-9-8-16-18-16h-92c-12 0-21 8-21 20v17c0 33 22 55 57 55h21c34 0 53-18 53-50V45Z" fill="url(#lens)" stroke="#050607" stroke-width="11"/>
+      <path d="M151 53c6-6 12-9 19-9s13 3 19 9" fill="none" stroke="#050607" stroke-width="12" stroke-linecap="round"/>
+      <path d="M43 45c25-9 63-8 92 2" fill="none" stroke="#8a8f95" stroke-width="5" opacity=".34"/>
+      <path d="M277 45c-25-9-63-8-92 2" fill="none" stroke="#8a8f95" stroke-width="5" opacity=".34"/>
+    </svg>`)}`;
+
   function addSticker(kind:string){
-    setSticker(kind);
+    setSticker(null);
     const id=`${kind}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
 
     setPlacedStickers(prev=>{
@@ -2497,15 +2597,8 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       x.lineWidth=border;
       x.strokeRect(border/2,border/2,outW-border,outH-border);
 
-      const names:Record<string,string>={classic:"LA EXCLUSIVA",party:"RETRO",selfie:"SELFIE EXCLU",cheers:"BRINDIS",good:"BUEN ROLLO",team:"EL COTO DE FIESTA",asturias:"ASTURIAS"};
-      const topH=Math.round(outH*.075);
-      x.fillStyle="rgba(0,0,0,.68)";
-      x.fillRect(border,border,outW-border*2,topH);
-      x.fillStyle="#ffd329";
-      x.font=`700 ${Math.round(outW*.034)}px sans-serif`;
-      x.textAlign="center";
-      x.textBaseline="middle";
-      x.fillText(names[frame],outW/2,border+topH/2);
+      // No imprimimos el nombre del marco elegido sobre la foto final.
+      // El propio marco ya aporta su diseño; evitamos rótulos como RETRO/SELFIE EXCLU/etc.
 
       // Un marco lento jamás bloquea el disparo. Si ya está disponible se compone;
       // si el túnel tarda demasiado, la foto se genera igualmente.
@@ -2518,23 +2611,80 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
         }
       }
 
+      // Medimos cada sticker tal y como se ve en el visor justo antes del disparo.
+      // Así la foto final conserva exactamente el tamaño elegido por el usuario.
+      const previewRect=previewRef.current?.getBoundingClientRect();
+      const stickerMetrics=new Map<string,{
+        fontSize:number;
+        fontFamily:string;
+        fontWeight:string;
+        color:string;
+        centerX:number;
+        centerY:number;
+        width:number;
+        height:number;
+      }>();
+
+      if(previewRef.current && previewRect && previewRect.width>0 && previewRect.height>0){
+        const scaleX=outW/previewRect.width;
+        const scaleY=outH/previewRect.height;
+
+        for(const ps of placedStickers){
+          const glyphEl=previewRef.current.querySelector(
+            `[data-sticker-id="${ps.id}"] [data-sticker-glyph="true"]`
+          ) as HTMLElement | null;
+          if(!glyphEl)continue;
+
+          const cs=window.getComputedStyle(glyphEl);
+          const cssFontSize=parseFloat(cs.fontSize)||32;
+          const glyphRect=glyphEl.getBoundingClientRect();
+
+          stickerMetrics.set(ps.id,{
+            fontSize:cssFontSize*ps.scale*scaleX,
+            fontFamily:cs.fontFamily||"sans-serif",
+            fontWeight:cs.fontWeight||"400",
+            color:cs.color||"#ffd329",
+            centerX:((glyphRect.left+glyphRect.width/2)-previewRect.left)*scaleX,
+            centerY:((glyphRect.top+glyphRect.height/2)-previewRect.top)*scaleY,
+            width:glyphRect.width*scaleX,
+            height:glyphRect.height*scaleY
+          });
+        }
+      }
+
+      const glassesImg=placedStickers.some(ps=>ps.kind==="glasses")
+        ? await loadFrameWithTimeout(GLASSES_STICKER_SRC,1200).catch(()=>null)
+        : null;
+
       for(const ps of placedStickers){
         const glyph=stickerGlyphs[ps.kind]||ps.kind;
         const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
-        const px=(ps.x/100)*outW;
-        const py=(ps.y/100)*outH;
-        const baseSize=isText?Math.round(outW*.048):Math.round(outW*.095);
+        const measured=stickerMetrics.get(ps.id);
+        const px=measured?.centerX ?? (ps.x/100)*outW;
+        const py=measured?.centerY ?? (ps.y/100)*outH;
 
+        // Las gafas se dibujan como imagen, con el MISMO ancho, alto y centro
+        // medidos en el visor. Así no dependen del emoji de Safari.
+        if(ps.kind==="glasses" && glassesImg){
+          const w=measured?.width ?? outW*.24*ps.scale;
+          const h=measured?.height ?? w*.4;
+          x.drawImage(glassesImg,px-w/2,py-h/2,w,h);
+          continue;
+        }
+
+        const fallbackBase=isText?outW*.048:outW*.095;
+        const finalFontSize=Math.max(10,Math.round(measured?.fontSize ?? fallbackBase*ps.scale));
         x.save();
-        x.font=isText
-          ? `700 ${Math.round(baseSize*ps.scale)}px sans-serif`
-          : `${Math.round(baseSize*ps.scale)}px sans-serif`;
+        x.font=`${isText ? "700" : (measured?.fontWeight||"400")} ${finalFontSize}px ${measured?.fontFamily||"sans-serif"}`;
         x.textAlign="center";
         x.textBaseline="middle";
-        x.fillStyle="#ffd329";
+        x.fillStyle=isText ? (measured?.color||"#ffd329") : "#ffd329";
         x.fillText(glyph,px,py);
         x.restore();
       }
+
+      // El diseño sorpresa NO se añade aquí.
+      // La foto previa queda limpia; la composición aprobada se aplica solo al Guardar/Compartir.
 
       const dataUrl=c.toDataURL("image/jpeg",.92);
       setPhotoAction("share");
@@ -2555,38 +2705,71 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     }
   }
 
-  function photoFile(){
-    const blob=photoBlobRef.current;
-    return blob ? new File([blob],`exclu-fotomaton-${Date.now()}.jpg`,{type:"image/jpeg"}) : null;
+  async function makeFinalSurpriseBlob():Promise<Blob|null>{
+    if(!photoUrl)return null;
+
+    const base=await loadFrameWithTimeout(photoUrl,2500).catch(()=>null);
+    if(!base)return photoBlobRef.current;
+
+    const c=document.createElement("canvas");
+    c.width=base.naturalWidth||base.width;
+    c.height=base.naturalHeight||base.height;
+    const x=c.getContext("2d");
+    if(!x)return photoBlobRef.current;
+
+    // Foto ya terminada: filtro + stickers + marco elegido.
+    x.drawImage(base,0,0,c.width,c.height);
+
+    // SORPRESA FINAL:
+    // Esta imagen PNG ya contiene el brochazo + tipografías + corazón.
+    // NO se dibuja durante la edición; únicamente aquí, al Guardar/Compartir.
+    const banner=await loadFrameWithTimeout("/photo-final-banner-APROBADO-SIN-GRACIAS.png",2500).catch(()=>null);
+    if(banner){
+      const naturalW=banner.naturalWidth||banner.width;
+      const naturalH=banner.naturalHeight||banner.height;
+
+      // Ocupa casi todo el ancho, manteniendo exactamente la proporción del PNG.
+      const drawW=c.width*.96;
+      const drawH=drawW*(naturalH/naturalW);
+      const drawX=(c.width-drawW)/2;
+      const bottomMargin=c.height*.012;
+      const drawY=c.height-drawH-bottomMargin;
+
+      x.drawImage(banner,drawX,drawY,drawW,drawH);
+    }
+
+    return await new Promise<Blob|null>((resolve)=>c.toBlob(resolve,"image/jpeg",.94));
   }
 
-  function downloadPhoto(){
-    if(!photoUrl)return;
-    const blob=photoBlobRef.current;
-    const href=blob?URL.createObjectURL(blob):photoUrl;
+  function makePhotoFile(blob:Blob|null){
+    return blob ? new File([blob],`la-exclusiva-fiestas-coto-2026-${Date.now()}.jpg`,{type:"image/jpeg"}) : null;
+  }
+
+  function downloadBlob(blob:Blob|null){
+    if(!blob)return;
+    const href=URL.createObjectURL(blob);
     const a=document.createElement("a");
     a.href=href;
-    a.download=`exclu-fotomaton-${Date.now()}.jpg`;
+    a.download=`la-exclusiva-fiestas-coto-2026-${Date.now()}.jpg`;
     a.style.display="none";
     document.body.appendChild(a);
     a.click();
     a.remove();
-    if(blob)window.setTimeout(()=>URL.revokeObjectURL(href),1500);
+    window.setTimeout(()=>URL.revokeObjectURL(href),1500);
   }
 
   async function save(){
     setPhotoAction("save");
     if(!photoUrl)return;
 
-    const file=photoFile();
+    const finalBlob=await makeFinalSurpriseBlob();
+    const file=makePhotoFile(finalBlob);
     const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
 
-    // Safari/iOS no respeta de forma fiable <a download> para una foto generada.
-    // Abrimos la hoja nativa: ahí aparece "Guardar imagen" / "Guardar en Fotos".
     if(isIOS && file && navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
       try{
-        await navigator.share({title:"Fotomatón La Exclusiva",files:[file]});
+        await navigator.share({title:"Cafetería La Exclusiva · Fiestas del Coto 2026",files:[file]});
         return;
       }catch(err:any){
         if(err?.name==="AbortError")return;
@@ -2594,31 +2777,46 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       }
     }
 
-    downloadPhoto();
+    downloadBlob(finalBlob);
   }
 
   async function share(){
     setPhotoAction("share");
     if(!photoUrl)return;
 
-    const file=photoFile();
+    const finalBlob=await makeFinalSurpriseBlob();
+    const file=makePhotoFile(finalBlob);
     try{
       if(file && navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
-        await navigator.share({title:"Fotomatón La Exclusiva",text:"Mi foto de EXCLU FEST",files:[file]});
+        await navigator.share({
+          title:"Cafetería La Exclusiva · Fiestas del Coto 2026",
+          text:"Yo estuve en las Fiestas del Coto 2026 ❤️",
+          files:[file]
+        });
         return;
       }
-      downloadPhoto();
+      downloadBlob(finalBlob);
     }catch(err:any){
       if(err?.name!=="AbortError")console.warn("Compartir no disponible:",err);
     }
   }
 
   async function repeatPhoto(){
-    setPhotoAction("repeat");
     if(!photoUrl)return;
+
+    // Repetir = empezar de cero: limpiamos TODO lo añadido por el usuario
+    // y volvemos a los valores iniciales del fotomatón.
     setPhotoUrl(null);
     photoBlobRef.current=null;
+    setPlacedStickers([]);
     setActiveStickerId(null);
+    setSticker(null);
+    setFilter("normal");
+    setFrame("classic");
+    setCameraZoom(1);
+    pinchStartRef.current=null;
+    pinchZoomStartRef.current=1;
+    setPhotoAction("share");
 
     // Si iOS ha suspendido el stream al abrir Compartir/Guardar, lo recuperamos.
     const live=streamRef.current?.getVideoTracks().some(t=>t.readyState==="live");
@@ -2640,7 +2838,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <div className="p112-frame-visible-label p112-frame-visible-label-team" aria-hidden="true">El Coto de Fiesta</div>
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
 
-      <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd}>
+      <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd} onClick={()=>setActiveStickerId(null)}>
         {cameraShutter!=="idle"&&
           <div className={`p112-camera-shutter ${cameraShutter}`} aria-hidden="true">
             <img src="/assets/camera-aperture-transition.png" alt="" />
@@ -2661,18 +2859,24 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
           const isText=["salud","exclusive","selfie","fiestas"].includes(ps.kind);
           return <div
             key={ps.id}
+            data-sticker-id={ps.id}
             className={`p112-placed-sticker ${activeStickerId===ps.id?"active":""} ${isText?"textual":""}`}
             style={{
               left:`${ps.x}%`,
               top:`${ps.y}%`,
-              transform:`translate(-50%,-50%) scale(${ps.scale})`
+              transform:`translate(-50%,-50%) scale(${ps.scale})`,
+              outline:"none",
+              borderColor:"transparent",
+              boxShadow:"none"
             }}
             onTouchStart={(e)=>placedStickerTouchStart(e,ps.id)}
             onTouchMove={placedStickerTouchMove}
             onTouchEnd={placedStickerTouchEnd}
             onClick={(e)=>{e.stopPropagation();setActiveStickerId(ps.id)}}
           >
-            <span>{glyph}</span>
+            {ps.kind==="glasses"
+              ? <img data-sticker-glyph="true" src={GLASSES_STICKER_SRC} alt="" draggable={false} style={{width:"2.2em",height:"auto",display:"block",pointerEvents:"none"}}/>
+              : <span data-sticker-glyph="true">{glyph}</span>}
             {activeStickerId===ps.id&&<>
               <button
                 className="p112-sticker-size p112-sticker-smaller"
