@@ -38,20 +38,30 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          if [[ "$VITE_SUPABASE_URL" =~ ^https?://[^[:space:]]+$ ]]; then
-            echo "✅ VITE_SUPABASE_URL tiene formato correcto"
-          else
-            echo "::error::VITE_SUPABASE_URL NO tiene formato HTTP/HTTPS válido"
-            exit 1
-          fi
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
 
-          if [ -n "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "✅ VITE_SUPABASE_ANON_KEY existe"
-          else
-            echo "::error::VITE_SUPABASE_ANON_KEY está vacía"
-            exit 1
-          fi
-          
+          const url = process.env.VITE_SUPABASE_URL;
+          const key = process.env.VITE_SUPABASE_ANON_KEY;
+
+          try {
+            const parsed = new URL(url);
+            console.log("✅ URL válida para JavaScript");
+            console.log("✅ Protocolo:", parsed.protocol);
+          } catch {
+            console.error("❌ JavaScript considera inválida VITE_SUPABASE_URL");
+            process.exit(1);
+          }
+
+          try {
+            createClient(url, key);
+            console.log("✅ Supabase acepta URL y ANON KEY");
+          } catch (error) {
+            console.error("❌ Supabase rechaza la configuración:", error.message);
+            process.exit(1);
+          }
+          NODE
+
       - name: Build
         run: npm run build
         env:
