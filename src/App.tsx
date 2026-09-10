@@ -5,7 +5,7 @@ import "./styles.css";
 
 
 function PassportGlyph() {
-  return <img className="passport-glyph-image" src="/assets/passport-nav-approved.png" alt="" aria-hidden="true" />;
+  return <img className="passport-glyph-image" src={`${import.meta.env.BASE_URL}assets/passport-nav-approved.png`} alt="" aria-hidden="true" />;
 }
 
 
@@ -282,7 +282,7 @@ function Customer() {
   }
 
   if (!sessionReady) {
-    return <div className="splash"><img src="/assets/exclu-approved-photobooth.png" alt="EXCLU"/><p>EXCLU está preparando la fiesta…</p></div>;
+    return <div className="splash"><img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU"/><p>EXCLU está preparando la fiesta…</p></div>;
   }
 
   if (result) {
@@ -377,12 +377,12 @@ function friendlyError(message = "") {
 }
 
 function Notice({ text, onClose }: { text: string; onClose: () => void }) {
-  return <div className="notice" role="status"><img src="/assets/exclu-approved-photobooth.png" alt="EXCLU"/><div><b>EXCLU</b><p>{text}</p></div><button onClick={onClose} aria-label="Cerrar">×</button></div>;
+  return <div className="notice" role="status"><img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU"/><div><b>EXCLU</b><p>{text}</p></div><button onClick={onClose} aria-label="Cerrar">×</button></div>;
 }
 
 function DesktopPoster({ setView }: { setView: (v: View) => void }) {
   return <div className="desktop-poster poster-shell poster-009">
-    <img src="/assets/exclu-fest-009-boceto.png" className="poster-img" alt="EXCLU FEST · diseño 009" />
+    <img src={`${import.meta.env.BASE_URL}assets/exclu-fest-009-boceto.png`} className="poster-img" alt="EXCLU FEST · diseño 009" />
     <Hot x={1.0} y={3.0} w={22.0} h={48.0} onClick={() => setView("passport")} label="Inicio y pasaporte" />
     <Hot x={24.0} y={3.0} w={22.0} h={48.0} onClick={() => setView("wheel")} label="Ruleta EXCLU" />
     <Hot x={47.0} y={3.0} w={22.0} h={48.0} onClick={() => setView("prizes")} label="Ver mis premios" />
@@ -399,7 +399,7 @@ function MobileHome({ setView, played, registered, raffleEntries, soundOn, photo
     <section className="home-visual-final">
       <img
         className="home-visual-final__art"
-        src="/assets/home-la-exclusiva-plaza.png"
+        src={`${import.meta.env.BASE_URL}assets/home-la-exclusiva-plaza.png`}
         alt="La Exclusiva con EXCLU en ambiente festivo"
       />
 
@@ -477,7 +477,7 @@ function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }
 
   return <main className="play-hub-approved play-hub-stable play-hub-v185" aria-label="Jugar ahora · La Exclusiva">
     <div className="play-hub-stable__top">
-      <img src="/assets/play-hub-top-user.png" alt="EXCLU · La Exclusiva" />
+      <img src={`${import.meta.env.BASE_URL}assets/play-hub-top-user.png`} alt="EXCLU · La Exclusiva" />
       <button className="play-back-button stable-back" onClick={() => { sound("click"); setView("home"); }} aria-label="Volver a Inicio"><ChevronLeft /></button>
       <button className={`play-sound-hotspot stable-sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2 /> : <VolumeX />}</button>
     </div>
@@ -487,7 +487,7 @@ function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }
     </section>}
 
     <section className="daily-games-stack-v187" aria-label="Juegos diarios 11, 12 y 13 de septiembre">
-      <img className="daily-games-stack-v187__art" src="/assets/daily-games-stack-approved.png" alt="Ruleta día 11, Quiz día 12 y Caja Sorpresa día 13" />
+      <img className="daily-games-stack-v187__art" src={`${import.meta.env.BASE_URL}assets/daily-games-stack-approved.png`} alt="Ruleta día 11, Quiz día 12 y Caja Sorpresa día 13" />
       {games.map((g) => {
         const state = dayState(g.day);
         const locked = !testOpenAll && state !== "open";
@@ -506,7 +506,7 @@ function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }
     </section>
 
     <section className="stable-card stable-passport-card" aria-label="Tu Pasaporte">
-      <img src="/assets/passport-card-user.png" alt="Tu Pasaporte · 11, 12 y 13 de septiembre" />
+      <img src={`${import.meta.env.BASE_URL}assets/passport-card-user.png`} alt="Tu Pasaporte · 11, 12 y 13 de septiembre" />
       <div className="stable-passport-states" aria-label="Estado de los tres días">
         {([11,12,13] as const).map((d, index) => {
           const state = dayState(d);
@@ -526,13 +526,13 @@ function PlayHub({ status, played, setView, soundOn, photoCount, onToggleSound }
 function GamesHub({ setView, soundOn, photoCount, onToggleSound }: { setView: (v: View) => void; soundOn: boolean; photoCount: number; onToggleSound: () => void }) {
   const go = (view: View) => { sound("click"); setView(view); window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); };
   const games = [
-    { view: "rosco" as View, cls: "rosco", title: "ROSCO DEL COTO", sub: "Pon a prueba tus conocimientos en un rosco completo de 27 letras.", img: "/assets/games-v255/rosco.webp" },
-    { view: "memory" as View, cls: "memory", title: "MEMORIA EXCLU", sub: "Encuentra todas las parejas y entrena tu memoria.", img: "/assets/games-v255/memory.webp" },
-    { view: "puzzle" as View, cls: "puzzle", title: "PUZZLE EXCLU", sub: "Une las piezas y completa la imagen.", img: "/assets/games-v255/puzzle.webp" },
+    { view: "rosco" as View, cls: "rosco", title: "ROSCO DEL COTO", sub: "Pon a prueba tus conocimientos en un rosco completo de 27 letras.", img: `${import.meta.env.BASE_URL}assets/games-v255/rosco.webp` },
+    { view: "memory" as View, cls: "memory", title: "MEMORIA EXCLU", sub: "Encuentra todas las parejas y entrena tu memoria.", img: `${import.meta.env.BASE_URL}assets/games-v255/memory.webp` },
+    { view: "puzzle" as View, cls: "puzzle", title: "PUZZLE EXCLU", sub: "Une las piezas y completa la imagen.", img: `${import.meta.env.BASE_URL}assets/games-v255/puzzle.webp` },
   ];
   return <section className="games-v255" aria-label="EXCLU Games">
     <div className="games-v255__hero-wrap">
-      <img className="games-v255__hero" src="/assets/games-v255/hero.webp" alt="EXCLU Games · elige un juego" />
+      <img className="games-v255__hero" src={`${import.meta.env.BASE_URL}assets/games-v255/hero.webp`} alt="EXCLU Games · elige un juego" />
       <button className="games-v255__back" onClick={() => go("home")} aria-label="Volver a Inicio"><ChevronLeft/></button>
       <button className={`games-v255__sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2/> : <VolumeX/>}</button>
     </div>
@@ -610,7 +610,7 @@ function ExcluFly(){
   },[running,best]);
   return <Card tone="purple" tag="EXCLU JUEGOS · JUEGO ESTRELLA" title="EXCLU VUELA" sub="Toca la pantalla para volar, esquiva obstáculos y recoge estrellas hasta llegar al Cofre EXCLU">
     <div className="fly-hud"><span>🚀 {distance} m</span><span>⭐ {collected}</span><span>🏆 Récord {best}</span></div>
-    <div className="fly-stage" onPointerDown={flap}><canvas ref={canvasRef} width={720} height={460}/>{!running&&!finished&&<div className="fly-overlay"><img src="/assets/exclu-approved-photobooth.png"/><h2>¿LISTO PARA VOLAR?</h2><p>Llega a 1.000 m y abre el Cofre EXCLU.</p><button onClick={(e)=>{e.stopPropagation();start()}}>JUGAR AHORA</button></div>}{finished&&<div className="fly-overlay result-mini"><h2>{distance>=1000?"¡META CONSEGUIDA!":"¡CASI!"}</h2><p>{chest||`Has llegado a ${distance} m y recogido ${collected} estrellas.`}</p><button onClick={(e)=>{e.stopPropagation();start()}}>VOLVER A INTENTAR</button></div>}</div>
+    <div className="fly-stage" onPointerDown={flap}><canvas ref={canvasRef} width={720} height={460}/>{!running&&!finished&&<div className="fly-overlay"><img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`}/><h2>¿LISTO PARA VOLAR?</h2><p>Llega a 1.000 m y abre el Cofre EXCLU.</p><button onClick={(e)=>{e.stopPropagation();start()}}>JUGAR AHORA</button></div>}{finished&&<div className="fly-overlay result-mini"><h2>{distance>=1000?"¡META CONSEGUIDA!":"¡CASI!"}</h2><p>{chest||`Has llegado a ${distance} m y recogido ${collected} estrellas.`}</p><button onClick={(e)=>{e.stopPropagation();start()}}>VOLVER A INTENTAR</button></div>}</div>
     <div className="fly-progress"><i style={{width:`${Math.min(100,distance/10)}%`}}/><span>🏁 1.000 m</span></div>
   </Card>
 }
@@ -628,18 +628,18 @@ function drawFly(ctx:CanvasRenderingContext2D,c:HTMLCanvasElement,st:any){
 
 type MemoryCard = { id:string; image:string };
 const MEMORY_LIBRARY: MemoryCard[] = [
-  {id:"excu",image:"/assets/memory-cards-v225/excu.webp"},
-  {id:"cafe",image:"/assets/memory-cards-v225/cafe.webp"},
-  {id:"sidra",image:"/assets/memory-cards-v225/sidra.webp"},
-  {id:"regalo",image:"/assets/memory-cards-v225/regalo.webp"},
-  {id:"camara",image:"/assets/memory-cards-v225/camara.webp"},
-  {id:"asturias",image:"/assets/memory-cards-v225/asturias.webp"},
-  {id:"fiesta",image:"/assets/memory-cards-v225/fiesta.webp"},
-  {id:"tapas",image:"/assets/memory-cards-v225/tapas.webp"},
-  {id:"costa",image:"/assets/memory-cards-v225/costa.webp"},
-  {id:"brindis",image:"/assets/memory-cards-v225/brindis.webp"},
-  {id:"pasaporte",image:"/assets/memory-cards-v225/pasaporte.webp"},
-  {id:"musica",image:"/assets/memory-cards-v225/musica.webp"},
+  {id:"excu",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/excu.webp`},
+  {id:"cafe",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/cafe.webp`},
+  {id:"sidra",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/sidra.webp`},
+  {id:"regalo",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/regalo.webp`},
+  {id:"camara",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/camara.webp`},
+  {id:"asturias",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/asturias.webp`},
+  {id:"fiesta",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/fiesta.webp`},
+  {id:"tapas",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/tapas.webp`},
+  {id:"costa",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/costa.webp`},
+  {id:"brindis",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/brindis.webp`},
+  {id:"pasaporte",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/pasaporte.webp`},
+  {id:"musica",image:`${import.meta.env.BASE_URL}assets/memory-cards-v225/musica.webp`},
 ];
 
 function MemoryExclu({ setView, userId, soundOn, onToggleSound, photoCount }:{ setView:(v:View)=>void; userId:string|null; soundOn:boolean; onToggleSound:()=>void; photoCount:number }){
@@ -716,7 +716,7 @@ function MemoryExclu({ setView, userId, soundOn, onToggleSound, photoCount }:{ s
   const go=(v:View)=>{sound("click");setView(v);window.scrollTo({top:0,behavior:"smooth"})};
 
   return <main className="memory-v224" aria-label="Memoria EXCLU"><section className="memory-v224__canvas">
-    <img className="memory-v224__art" src="/assets/memory-exclu-approved-v224.png" alt="Memoria EXCLU"/>
+    <img className="memory-v224__art" src={`${import.meta.env.BASE_URL}assets/memory-exclu-approved-v224.png`} alt="Memoria EXCLU"/>
     <button className="memory-v224__hot back" onClick={()=>go("games")} aria-label="Volver a EXCLU GAMES"/>
     <button className="memory-v224__hot sound" onClick={onToggleSound} aria-label={soundOn?"Desactivar sonido":"Activar sonido"}/>
     {!soundOn&&<span className="memory-v224__sound-off" aria-hidden="true"><VolumeX/></span>}
@@ -743,7 +743,7 @@ function RingToss(){
 function FindExclu(){
  const [round,setRound]=useState(0); const [found,setFound]=useState(false); const pos=[12,68,35,80,48][round%5];
  function hit(){setFound(true);sound("win");setTimeout(()=>{setFound(false);setRound(r=>r+1)},1100)}
- return <Card tone="orange" tag="EXCLU JUEGOS" title="¿DÓNDE ESTÁ EXCLU?" sub="Encuentra al robot escondido entre la fiesta"><div className="find-stage">{Array.from({length:18}).map((_,i)=><span key={i} className="crowd">{["🥳","🎉","🍻","🎺","🕺","💃"][i%6]}</span>)}<button className={`hidden-exclu ${found?"found":""}`} onClick={hit} style={{left:`${pos}%`,top:`${22+(round*17)%55}%`}}><img src="/assets/exclu-approved-photobooth.png" alt="Encuentra a EXCLU"/></button>{found&&<strong>¡ENCONTRADO! 🤖✨</strong>}</div><p className="game-hint"><Search size={16}/> Ronda {round+1} · toca al robot cuando lo veas</p></Card>
+ return <Card tone="orange" tag="EXCLU JUEGOS" title="¿DÓNDE ESTÁ EXCLU?" sub="Encuentra al robot escondido entre la fiesta"><div className="find-stage">{Array.from({length:18}).map((_,i)=><span key={i} className="crowd">{["🥳","🎉","🍻","🎺","🕺","💃"][i%6]}</span>)}<button className={`hidden-exclu ${found?"found":""}`} onClick={hit} style={{left:`${pos}%`,top:`${22+(round*17)%55}%`}}><img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="Encuentra a EXCLU"/></button>{found&&<strong>¡ENCONTRADO! 🤖✨</strong>}</div><p className="game-hint"><Search size={16}/> Ronda {round+1} · toca al robot cuando lo veas</p></Card>
 }
 
 
@@ -937,8 +937,8 @@ function RoscoCoto({ setView, userId, soundOn, onToggleSound }: { setView:(v:Vie
   return <section className="rosco-v212" aria-label="Rosco del Coto">
     <div className="rosco-v212__shell">
       <div className="rosco-v212__top">
-        <img className="rosco-v212__art" src="/assets/rosco-coto-top-v213.png" alt="Rosco del Coto · La Exclusiva" />
-        <div className="rosco-v212__logo"><img src="/assets/logo-la-exclusiva-full-approved.png" alt="La Exclusiva Cafetería" /></div>
+        <img className="rosco-v212__art" src={`${import.meta.env.BASE_URL}assets/rosco-coto-top-v213.png`} alt="Rosco del Coto · La Exclusiva" />
+        <div className="rosco-v212__logo"><img src={`${import.meta.env.BASE_URL}assets/logo-la-exclusiva-full-approved.png`} alt="La Exclusiva Cafetería" /></div>
         <button className="rosco-v212__back" onClick={()=>go("games")} aria-label="Volver a EXCLU Games"><ChevronLeft/> <span>Volver</span></button>
         <button className={`rosco-v212__sound ${soundOn?"is-on":"is-off"}`} onClick={onToggleSound} aria-label={soundOn?"Desactivar sonido":"Activar sonido"}>{soundOn?<Volume2/>:<VolumeX/>}</button>
 
@@ -1012,14 +1012,14 @@ const DIFFERENCE_LEVELS: DifferenceLevel[] = [
 ];
 type DifferenceScene = { id:string; original:string; altered:string; spots:{x:number;y:number;s:number}[] };
 const DIFFERENCE_SCENES: Record<5|10|15,DifferenceScene> = {
-  5:{id:"coffee",original:"/assets/differences-v245-real/coffee-a.webp",altered:"/assets/differences-v245-real/coffee-b.webp",spots:[
+  5:{id:"coffee",original:`${import.meta.env.BASE_URL}assets/differences-v245-real/coffee-a.webp`,altered:`${import.meta.env.BASE_URL}assets/differences-v245-real/coffee-b.webp`,spots:[
     {x:8,y:19,s:11},{x:83,y:24,s:10},{x:78,y:76,s:12},{x:21,y:75,s:12},{x:56,y:66,s:11}
   ]},
-  10:{id:"cocktail",original:"/assets/differences-v245-real/cocktail-a.webp",altered:"/assets/differences-v245-real/cocktail-b.webp",spots:[
+  10:{id:"cocktail",original:`${import.meta.env.BASE_URL}assets/differences-v245-real/cocktail-a.webp`,altered:`${import.meta.env.BASE_URL}assets/differences-v245-real/cocktail-b.webp`,spots:[
     {x:22,y:16,s:10},{x:40,y:20,s:10},{x:57,y:18,s:10},{x:74,y:22,s:10},{x:86,y:54,s:10},
     {x:70,y:55,s:10},{x:51,y:58,s:10},{x:31,y:56,s:10},{x:14,y:64,s:10},{x:89,y:83,s:10}
   ]},
-  15:{id:"burger",original:"/assets/differences-v245-real/burger-a.webp",altered:"/assets/differences-v245-real/burger-b.webp",spots:[
+  15:{id:"burger",original:`${import.meta.env.BASE_URL}assets/differences-v245-real/burger-a.webp`,altered:`${import.meta.env.BASE_URL}assets/differences-v245-real/burger-b.webp`,spots:[
     {x:36,y:18,s:8},{x:51,y:19,s:8},{x:66,y:20,s:8},{x:77,y:28,s:8},{x:82,y:45,s:8},
     {x:77,y:66,s:8},{x:65,y:74,s:8},{x:53,y:76,s:8},{x:40,y:75,s:8},{x:28,y:70,s:8},
     {x:18,y:60,s:8},{x:20,y:43,s:8},{x:27,y:31,s:8},{x:49,y:49,s:9},{x:60,y:58,s:9}
@@ -1068,12 +1068,12 @@ function SpotDifferences({setView,userId,soundOn,onToggleSound,photoCount}:{setV
   }
   return <main className="simon-v248" aria-label="EXCLU DICE">
     <div className="simon-v248__screen">
-      <img className="simon-v248__art" src={phase==="menu"?"/assets/exclu-dice-approved-menu-v252.webp":"/assets/exclu-dice-approved-game-v252.webp"} alt="" aria-hidden="true"/>
+      <img className="simon-v248__art" src={phase==="menu"?`${import.meta.env.BASE_URL}assets/exclu-dice-approved-menu-v252.webp`:`${import.meta.env.BASE_URL}assets/exclu-dice-approved-game-v252.webp`} alt="" aria-hidden="true"/>
       <div className="simon-v249__nav-mask" aria-hidden="true"/>
 
       <header className="simon-v248__header">
         <button className="simon-v248__back" onClick={()=>phase==="menu"?go("games"):(clearTimers(),setPhase("menu"))} aria-label="Volver"><ChevronLeft/></button>
-        <span className="simon-v248__logo-wrap"><img src="/assets/logo-la-exclusiva-full-approved.png" alt="La Exclusiva Cafetería"/></span>
+        <span className="simon-v248__logo-wrap"><img src={`${import.meta.env.BASE_URL}assets/logo-la-exclusiva-full-approved.png`} alt="La Exclusiva Cafetería"/></span>
         <button className="simon-v248__sound" onClick={onToggleSound} aria-label="Sonido">{soundOn?<Volume2/>:<VolumeX/>}</button>
       </header>
 
@@ -1087,7 +1087,7 @@ function SpotDifferences({setView,userId,soundOn,onToggleSound,photoCount}:{setV
         </div>
         <div className="simon-v248__pads" aria-label="Tablero EXCLU DICE">
           {[0,1,2,3].map(i=><button key={i} className={`simon-v248__pad p${i} ${lit===i?"lit":""}`} disabled={phase!=="input"} onClick={()=>press(i)} aria-label={colors[i]}/>) }
-          <span className="simon-v249__center-logo" aria-hidden="true"><img src="/assets/logo-la-exclusiva-real-icon.png" alt=""/></span>
+          <span className="simon-v249__center-logo" aria-hidden="true"><img src={`${import.meta.env.BASE_URL}assets/logo-la-exclusiva-real-icon.png`} alt=""/></span>
         </div>
         <div className="simon-v249__scorebar">
           <div className="simon-v249__best"><span>♛ MEJOR PUNTUACIÓN</span><b>{best}</b></div>
@@ -1200,7 +1200,7 @@ function PuzzleExclu({setView,userId,soundOn,onToggleSound}:{setView:(v:View)=>v
   return <main className="puzzle-v231" aria-label="Puzzle EXCLU">
     <header className="puzzle-v231__header">
       <button onClick={()=>phase==="images"?go("games"):setPhase(phase==="level"?"images":"level")} className="puzzle-v231__back"><ChevronLeft/> Volver</button>
-      <div className="puzzle-v231__brand"><img src="/assets/logo-la-exclusiva-real-icon.png" alt=""/><div><strong>La Exclusiva</strong><span>CAFETERÍA</span></div></div>
+      <div className="puzzle-v231__brand"><img src={`${import.meta.env.BASE_URL}assets/logo-la-exclusiva-real-icon.png`} alt=""/><div><strong>La Exclusiva</strong><span>CAFETERÍA</span></div></div>
       <button onClick={onToggleSound} className="puzzle-v231__sound" aria-label={soundOn?"Desactivar sonido":"Activar sonido"}>{soundOn?<Volume2/>:<VolumeX/>}</button>
     </header>
 
@@ -1230,7 +1230,7 @@ function PuzzleExclu({setView,userId,soundOn,onToggleSound}:{setView:(v:View)=>v
 
 function RegisterPanel({ registered, phoneMasked, phone, setPhone, accepted, setAccepted, busy, onRegister }: any) {
   return <section id="register" className={`register-panel ${registered ? "registered" : ""}`}>
-    <img src="/assets/exclu-approved-photobooth.png" alt="EXCLU" />
+    <img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU" />
     <div className="register-copy">
       <b>{registered ? "✓ YA ESTÁS REGISTRADO" : "PARTICIPA SIN SMS Y SIN COSTE"}</b>
       <small>{registered ? `${phoneMasked ?? "Tu teléfono"} · Una participación por persona y día.` : "Introduce tu teléfono. Lo usamos solo para evitar participaciones duplicadas; no enviamos ningún SMS."}</small>
@@ -1265,7 +1265,7 @@ function RoulettePrizePopup({ result, onClose }: { result: GameResult; onClose: 
       <div className="roulette-prize-v084">
         <img
           className="roulette-prize-v084__art"
-          src="/assets/roulette-popup-approved-v084.png"
+          src={`${import.meta.env.BASE_URL}assets/roulette-popup-approved-v084.png`}
           alt=""
           aria-hidden="true"
         />
@@ -1420,7 +1420,7 @@ function Wheel({ busy, played, registered, play, soundOn, onToggleSound }: { bus
   function playCelebration() {
     if (!soundOn || localStorage.getItem("exclu_sound") === "off") return;
     try {
-      const audio = new Audio("/assets/celebration-v2.wav");
+      const audio = new Audio(`${import.meta.env.BASE_URL}assets/celebration-v2.wav`);
       audio.volume = 0.9;
       audio.currentTime = 0;
       void audio.play().catch(() => {});
@@ -1534,8 +1534,8 @@ function Wheel({ busy, played, registered, play, soundOn, onToggleSound }: { bus
   const label = !registered ? "REGÍSTRATE PARA JUGAR" : (played && !ROULETTE_PREVIEW_ENABLED) ? "✓ COMPLETADO" : phase!=="idle" || busy ? "¡GIRANDO!" : "¡JUGAR AHORA!";
 
   return <section className="roulette-approved" aria-label="Ruleta La Exclusiva">
-    <img className="roulette-approved__art" src="/assets/roulette-approved-screen.png" alt="Ruleta La Exclusiva" />
-<img ref={wheelRef} className={`roulette-approved__wheel ${phase!=="idle"?"is-spinning":""}`} src="/assets/roulette-approved-wheel.png" alt="" aria-hidden="true" />
+    <img className="roulette-approved__art" src={`${import.meta.env.BASE_URL}assets/roulette-approved-screen.png`} alt="Ruleta La Exclusiva" />
+<img ref={wheelRef} className={`roulette-approved__wheel ${phase!=="idle"?"is-spinning":""}`} src={`${import.meta.env.BASE_URL}assets/roulette-approved-wheel.png`} alt="" aria-hidden="true" />
 <span className="roulette-approved__pointer" aria-hidden="true"><i /></span>
     <button className="roulette-approved__back" onClick={()=>{sound("click"); window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver" />
     <button className={`roulette-approved__sound ${soundOn ? "is-on" : "is-off"}`} onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"} title={soundOn ? "Desactivar sonido" : "Activar sonido"}>{soundOn ? <Volume2 /> : <VolumeX />}</button>
@@ -1723,12 +1723,12 @@ function Quiz({ busy, played, registered, onFinished }: { busy: boolean; played:
   const buttonLabel=!registered?"REGÍSTRATE PARA JUGAR":loadingQuiz?"PREPARANDO...":"¡JUGAR AHORA!";
   return <section className="quiz-pattern-screen" aria-label="Quiz EXCLU · Día 12">
     {!started && <div className="quiz-v194-approved-intro">
-      <img src="/assets/day12-quiz-v194-intro.png" alt="Quiz · ¿Cuánto sabes de El Coto?"/>
+      <img src={`${import.meta.env.BASE_URL}assets/day12-quiz-v194-intro.png`} alt="Quiz · ¿Cuánto sabes de El Coto?"/>
       <button className="quiz-v194-back-hot" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver"/>
       <button type="button" className="quiz-v194-start-hot" onClick={(e)=>{e.preventDefault();e.stopPropagation();startQuiz();}} disabled={loadingQuiz} aria-label={buttonLabel}/>
       {loadingQuiz && <div className="quiz-v194-loading">PREPARANDO...</div>}
     </div>}
-    {started && <><button className="quiz-pattern-back" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver">‹</button><div className="quiz-pattern-brand"><img src="/assets/logo-la-exclusiva-real-icon.png" alt=""/><b>La Exclusiva</b><small>CAFETERÍA</small></div><h1>QUIZ</h1><p className="quiz-pattern-sub">¿CUÁNTO SABES DE EL COTO?</p></>}
+    {started && <><button className="quiz-pattern-back" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver">‹</button><div className="quiz-pattern-brand"><img src={`${import.meta.env.BASE_URL}assets/logo-la-exclusiva-real-icon.png`} alt=""/><b>La Exclusiva</b><small>CAFETERÍA</small></div><h1>QUIZ</h1><p className="quiz-pattern-sub">¿CUÁNTO SABES DE EL COTO?</p></>}
     {started && q && !summary && <div className="quiz-live-card">
       <div className="quiz-live-head"><span>{q.category}</span><b>{n+1}/5</b></div>
       <div className="quiz-progress"><i style={{width:`${((n+1)/5)*100}%`}}/></div>
@@ -1795,7 +1795,7 @@ function Boxes({ busy, played, registered, phoneMasked, setView, soundOn, onTogg
 
   return <section className="box13-v198" aria-label="Caja Sorpresa · Día 13">
     <div className="box13-v198-art-wrap">
-      <img className="box13-v198-art" src="/assets/day13-box-v198-approved.png" alt="Caja Sorpresa · Elige una caja y descubre tu suerte" />
+      <img className="box13-v198-art" src={`${import.meta.env.BASE_URL}assets/day13-box-v198-approved.png`} alt="Caja Sorpresa · Elige una caja y descubre tu suerte" />
 
       <button className="box13-v198-hot back" onClick={()=>{sound("click");window.dispatchEvent(new CustomEvent("exclu-back-to-play"));}} aria-label="Volver" />
       <button className="box13-v198-hot sound" onClick={onToggleSound} aria-label={soundOn ? "Desactivar sonido" : "Activar sonido"} />
@@ -1915,7 +1915,7 @@ function Passport({ status, setView }: { status: FestivalStatus; setView: (v: Vi
       <section className="passport-v176__visual">
         <img
           className="passport-v176__art"
-          src="/assets/passport-v176-approved-top.png"
+          src={`${import.meta.env.BASE_URL}assets/passport-v176-approved-top.png`}
           alt="Tu Pasaporte de La Exclusiva para las fiestas de El Coto"
         />
 
@@ -2008,12 +2008,12 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
   const frameIds=["classic","party","selfie","cheers","good","team","asturias"];
   const approvedFrameAssets:Record<string,string>={
-    party:"/assets/frames/retro.png",
-    selfie:"/assets/frames/selfie.png",
-    cheers:"/assets/frames/brindis.png",
-    good:"/assets/frames/buen-rollo.png",
-    team:"/assets/frames/el-coto-esta-de-fiesta.png",
-    asturias:"/assets/frames/asturias.png"
+    party:`${import.meta.env.BASE_URL}assets/frames/retro.png`,
+    selfie:`${import.meta.env.BASE_URL}assets/frames/selfie.png`,
+    cheers:`${import.meta.env.BASE_URL}assets/frames/brindis.png`,
+    good:`${import.meta.env.BASE_URL}assets/frames/buen-rollo.png`,
+    team:`${import.meta.env.BASE_URL}assets/frames/el-coto-esta-de-fiesta.png`,
+    asturias:`${import.meta.env.BASE_URL}assets/frames/asturias.png`
   };
   const stickerIds=["exclu","salud","beer","hearts","crown","glasses","confetti","heart","coffee","exclusive","selfie","fiestas"];
   const filterIds=["normal","warm","bw","party","vintage","neon"];
@@ -2723,7 +2723,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
     // SORPRESA FINAL:
     // Esta imagen PNG ya contiene el brochazo + tipografías + corazón.
     // NO se dibuja durante la edición; únicamente aquí, al Guardar/Compartir.
-    const banner=await loadFrameWithTimeout("/photo-final-banner-APROBADO-SIN-GRACIAS.png",2500).catch(()=>null);
+    const banner=await loadFrameWithTimeout(`${import.meta.env.BASE_URL}photo-final-banner-APROBADO-SIN-GRACIAS.png`,2500).catch(()=>null);
     if(banner){
       const naturalW=banner.naturalWidth||banner.width;
       const naturalH=banner.naturalHeight||banner.height;
@@ -2833,7 +2833,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 
   return <main className="photo112">
     <div className="photo112-stage" data-facing={facing}>
-      <img className="photo112-art" src="/assets/fotomaton-definitivo-aprobado.png" alt="Fotomatón La Exclusiva"/>
+      <img className="photo112-art" src={`${import.meta.env.BASE_URL}assets/fotomaton-definitivo-aprobado.png`} alt="Fotomatón La Exclusiva"/>
       <div className="p112-frame-visible-label p112-frame-visible-label-party" aria-hidden="true">Fiestas Retro</div>
       <div className="p112-frame-visible-label p112-frame-visible-label-team" aria-hidden="true">El Coto de Fiesta</div>
       <button className="p112-back" onClick={()=>{stopCamera();setView("home")}} aria-label="Volver"/>
@@ -2841,7 +2841,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
       <div ref={previewRef} className={`p112-preview ${cameraActivated?"camera-active":""} ${cameraCrossfade?"camera-crossfade":""}`} onTouchStart={handleCameraTouchStart} onTouchMove={handleCameraTouchMove} onTouchEnd={handleCameraTouchEnd} onClick={()=>setActiveStickerId(null)}>
         {cameraShutter!=="idle"&&
           <div className={`p112-camera-shutter ${cameraShutter}`} aria-hidden="true">
-            <img src="/assets/camera-aperture-transition.png" alt="" />
+            <img src={`${import.meta.env.BASE_URL}assets/camera-aperture-transition.png`} alt="" />
           </div>
         }
         {cameraActivated&&!photoUrl&&<div className="p112-live-bg" aria-hidden="true"/>}
@@ -2961,7 +2961,7 @@ function Photo({ onPhotoCreated, setView }: { onPhotoCreated: () => void; setVie
 }
 
 function Card({ tone, tag, title, sub, children }: any) {
-  return <section className={`card ${tone}`}><span className="tag">{tag}</span><h1>{title}</h1><p>{sub}</p>{children}<img className="robot" src="/assets/exclu-approved-photobooth.png" alt="EXCLU" /></section>;
+  return <section className={`card ${tone}`}><span className="tag">{tag}</span><h1>{title}</h1><p>{sub}</p>{children}<img className="robot" src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU" /></section>;
 }
 
 function Prizes({ status, setView }: { status: FestivalStatus; setView: (v: View) => void }) {
@@ -2971,7 +2971,7 @@ function Prizes({ status, setView }: { status: FestivalStatus; setView: (v: View
     <div className="prizes-final-shell">
       <header className="prizes-final-header">
         <div className="prizes-final-brand" aria-label="La Exclusiva Cafetería">
-          <img src="/assets/logo-la-exclusiva-real-icon.png" alt="Logo La Exclusiva" />
+          <img src={`${import.meta.env.BASE_URL}assets/logo-la-exclusiva-real-icon.png`} alt="Logo La Exclusiva" />
           <div><strong>La Exclusiva</strong><span>CAFETERÍA</span></div>
         </div>
         <h1>MIS PREMIOS</h1>
@@ -2979,7 +2979,7 @@ function Prizes({ status, setView }: { status: FestivalStatus; setView: (v: View
       </header>
 
       <div className="prizes-final-hero" aria-hidden="true">
-        <img src="/assets/prizes-hero-approved.png" alt="" />
+        <img src={`${import.meta.env.BASE_URL}assets/prizes-hero-approved.png`} alt="" />
       </div>
 
       <div className="prizes-final-summary">
@@ -3021,7 +3021,7 @@ function Result({ result, onBack }: { result: GameResult; onBack: () => void }) 
       <div className="celebration-kicker">EXCLU FEST · LA EXCLUSIVA</div>
       <h1>{result.already_played ? "¡YA JUGASTE HOY!" : result.won ? "¡ENHORABUENA!" : "¡SIGUES EN EL SORTEO!"}</h1>
       {result.won && <h2>¡HAS GANADO!</h2>}
-      <img className="celebration-robot" src="/assets/exclu-approved-photobooth.png" alt="EXCLU celebrando"/>
+      <img className="celebration-robot" src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU celebrando"/>
       <div className="prize-burst">
         <strong>{result.prize_icon ? `${result.prize_icon} ` : ""}{result.prize_name || result.message || "Tu participación ha quedado registrada."}</strong>
         {result.prize_description && <small>{result.prize_description}</small>}
@@ -3195,7 +3195,7 @@ function AdminPanel() {
     } finally { setBusy(false); }
   }
 
-  if (!ready) return <div className="admin admin-loading"><div><img src="/assets/exclu-approved-photobooth.png" alt="EXCLU"/><p>Abriendo el panel…</p></div></div>;
+  if (!ready) return <div className="admin admin-loading"><div><img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU"/><p>Abriendo el panel…</p></div></div>;
 
   if (!admin) {
     const sql = userId ? `insert into public.admin_users(user_id) values ('${userId}') on conflict do nothing;` : "";

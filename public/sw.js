@@ -1,5 +1,11 @@
 const CACHE = "la-exclusiva-pwa-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
+const APP_SHELL = [
+  "/exclu-fest/",
+  "/exclu-fest/manifest.webmanifest",
+  "/exclu-fest/icons/icon-192.png",
+  "/exclu-fest/icons/icon-512.png",
+  "/exclu-fest/icons/apple-touch-icon.png"
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).catch(() => undefined));

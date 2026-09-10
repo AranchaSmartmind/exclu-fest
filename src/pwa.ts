@@ -31,7 +31,7 @@ export function registerPWA() {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/exclu-fest/sw.js")
       .then(() => {
         console.log("PWA registrada correctamente");
       })
