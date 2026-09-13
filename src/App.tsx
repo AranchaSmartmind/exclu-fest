@@ -3045,9 +3045,26 @@ function Prizes({ status, setView }: { status: FestivalStatus; setView: (v: View
             </button>
           </div>
         ) : rewards.map((r) => (
-          <div className="prizes-final-row" key={r.reward_code}>
+          <div className="prizes-final-row" key={r.reward_code} style={{alignItems:"flex-start",flexWrap:"wrap"}}>
             <span className="prizes-final-row-icon">{r.icon}</span>
-            <div className="prizes-final-row-copy"><b>{r.name}</b><small>Código de canje</small><code>{r.reward_code}</code></div>
+            <div className="prizes-final-row-copy" style={{flex:"1 1 180px"}}>
+              <b>{r.name}</b>
+              <small>Código de canje</small>
+              <code>{r.reward_code}</code>
+              {r.status !== "redeemed" && r.reward_code && (
+                <div style={{
+                  background:"#fff",
+                  padding:10,
+                  borderRadius:14,
+                  width:164,
+                  maxWidth:"100%",
+                  marginTop:10
+                }}>
+                  <QRCode value={r.reward_code} size={144} level="M"/>
+                </div>
+              )}
+              {r.status !== "redeemed" && <small style={{marginTop:6}}>Enséñame este QR en La Exclusiva para canjear tu premio.</small>}
+            </div>
             <em className={r.status}>{r.status === "redeemed" ? "CANJEADO" : "PENDIENTE"}</em>
           </div>
         ))}
