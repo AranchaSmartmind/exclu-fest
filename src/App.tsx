@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BarChart3, CheckCircle2, ChevronLeft, Gift, LockKeyhole, RefreshCw, Sparkles, Ticket, Trophy, Users, XCircle, Volume2, VolumeX, Search, MousePointerClick, Home, Gamepad2, Camera, CalendarDays, UserRound, Download, Share2 } from "lucide-react";
 import { supabase } from "./lib/supabase";
+import QRCode from "react-qr-code";
+import { Html5Qrcode } from "html5-qrcode";
 import "./styles.css";
 
 
@@ -95,15 +97,16 @@ type GameResult = {
 };
 
 export default function App() {
-  const [path, setPath] = useState(window.location.pathname);
+  const isAdminRoute =
+    window.location.hash === "#/admin" ||
+    window.location.pathname.endsWith("/admin");
 
-  useEffect(() => {
-    const onPop = () => setPath(window.location.pathname);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  const isRedeemRoute =
+    window.location.hash === "#/canje" ||
+    window.location.pathname.endsWith("/canje");
 
-  if (path.startsWith("/admin")) return <AdminPanel />;
+  if (isRedeemRoute) return <QuickRedeem />;
+  if (isAdminRoute) return <AdminPanel />;
   return <Customer />;
 }
 
@@ -281,6 +284,50 @@ function Customer() {
     }
   }
 
+  async function showQuizResult(r: GameResult) {
+    let finalResult = r;
+
+    // El Quiz del día 12 puede devolver "won: true" antes de incluir en la
+    // respuesta el nombre/código del premio. Como el premio ya está guardado
+    // en Supabase (y aparece en "Mis premios"), recuperamos el estado recién
+    // actualizado y completamos la pantalla de celebración con ese premio.
+    if (r.won && (!r.prize_name || !r.reward_code)) {
+      try {
+        // Damos un instante a la transacción del premio para quedar visible.
+        await new Promise((resolve) => setTimeout(resolve, 180));
+
+        const { data, error } = await supabase.rpc("get_my_festival_status", {
+          p_festival_slug: FESTIVAL,
+        });
+
+        if (!error && data) {
+          const freshStatus = data as FestivalStatus;
+          setStatus(freshStatus);
+
+          const latestReward = [...(freshStatus.rewards ?? [])]
+            .filter((reward) => reward.status !== "cancelled" && reward.status !== "expired")
+            .sort((a, b) => new Date(b.claimed_at).getTime() - new Date(a.claimed_at).getTime())[0];
+
+          if (latestReward) {
+            finalResult = {
+              ...r,
+              prize_name: r.prize_name || latestReward.name,
+              prize_icon: r.prize_icon || latestReward.icon || "🎁",
+              reward_code: r.reward_code || latestReward.reward_code,
+              raffle_entries: freshStatus.raffle_entries ?? r.raffle_entries,
+              passport_complete: freshStatus.passport_complete ?? r.passport_complete,
+            };
+          }
+        }
+      } catch (error) {
+        console.warn("No se pudo completar el premio del Quiz desde Mis premios", error);
+      }
+    }
+
+    setResult(finalResult);
+    await loadStatus();
+  }
+
   if (!sessionReady) {
     return <div className="splash"><img src={`${import.meta.env.BASE_URL}assets/exclu-approved-photobooth.png`} alt="EXCLU"/><p>EXCLU está preparando la fiesta…</p></div>;
   }
@@ -334,7 +381,7 @@ function Customer() {
           {view !== "passport" && view !== "games" && view !== "rosco" && view !== "memory" && view !== "puzzle" && view !== "differences" && !["wheel","quiz","box"].includes(view) && <button className="back" onClick={() => { sound("click"); setView(["wheel", "quiz", "box"].includes(view) ? "play" : "home"); }}><ChevronLeft /> Volver</button>}
           {view === "games" && <GamesHub setView={setView} soundOn={soundOn} photoCount={photoCount} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
           {view === "wheel" && <Wheel busy={busy} played={played.has(11)} registered={status.registered} play={() => play("wheel", 11, undefined, false)} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} />}
-          {view === "quiz" && <Quiz busy={busy} played={played.has(12)} registered={status.registered} onFinished={async (r) => { setResult(r); await loadStatus(); }} />}
+          {view === "quiz" && <Quiz busy={busy} played={played.has(12)} registered={status.registered} onFinished={showQuizResult} />}
           {view === "box" && <Boxes busy={busy} played={played.has(13)} registered={status.registered} phoneMasked={status.phone_masked} setView={setView} soundOn={soundOn} onToggleSound={() => { const next=!soundOn; setSoundOn(next); localStorage.setItem("exclu_sound", next ? "on" : "off"); if(next) sound("correct"); }} play={(choice) => play("box", 13, choice, false)} />}
           {view === "passport" && <Passport status={status} setView={setView} />}
           {view === "photo" && <Photo onPhotoCreated={registerPhotoCreated} setView={setView} />}
@@ -3026,8 +3073,8 @@ function Result({ result, onBack }: { result: GameResult; onBack: () => void }) 
         <strong>{result.prize_icon ? `${result.prize_icon} ` : ""}{result.prize_name || result.message || "Tu participación ha quedado registrada."}</strong>
         {result.prize_description && <small>{result.prize_description}</small>}
       </div>
-      {result.reward_code && <div className="reward-code-card"><span className="code-label">TU CÓDIGO DE PREMIO</span><code>{result.reward_code}</code><p>Enséñalo al personal de La Exclusiva para canjearlo.</p></div>}
-      <div className="result-ticket"><Ticket/> {result.raffle_entries ?? 0} participaciones para los 3 desayunos para dos</div>
+      {result.reward_code && <div className="reward-code-card"><span className="code-label">TU CÓDIGO DE PREMIO</span><code>{result.reward_code}</code><div style={{background:"#fff",padding:12,borderRadius:16,width:184,maxWidth:"100%",margin:"12px auto"}}><QRCode value={result.reward_code} size={160} level="M"/></div><p>Enséñalo al personal de La Exclusiva para canjearlo.</p></div>}
+      <div className="result-ticket"><Ticket/> {result.raffle_entries ?? 0} participaciones para el sorteo final de la Cesta de La Alacena de MG</div>
       {result.passport_complete && <div className="bonus"><Trophy/> ¡Pasaporte completo! +2 participaciones extra</div>}
       <button className="celebration-button" onClick={()=>{sound("click");onBack();}}>VOLVER A EXCLU FEST</button>
     </div>
@@ -3048,6 +3095,46 @@ type AdminOverview = {
   winners?: Array<{ position: number; participant_id: string; phone_masked: string; entries: number }>;
 };
 
+type AdminDayPrize = {
+  prize_name: string;
+  icon: string;
+  generated: number;
+  pending: number;
+  redeemed: number;
+};
+
+type AdminDayParticipant = {
+  phone_masked: string;
+  played_at: string;
+  game_type: string;
+};
+
+type AdminDayStats = {
+  day: number;
+  event_date: string;
+  game_type: string;
+  participants: number;
+  plays: number;
+  raffle_entries: number;
+  prizes_generated: number;
+  prizes_pending: number;
+  prizes_redeemed: number;
+  prizes: AdminDayPrize[];
+  participant_list: AdminDayParticipant[];
+};
+
+type AdminInventoryRow = {
+  id: string;
+  name: string;
+  icon: string;
+  stock_total: number;
+  stock_remaining: number;
+  active: boolean;
+  adjudicated: number;
+  pending: number;
+  redeemed: number;
+};
+
 type RewardLookup = {
   found: boolean;
   reward_code?: string;
@@ -3060,11 +3147,200 @@ type RewardLookup = {
   message?: string;
 };
 
+
+function QuickRedeem() {
+  const scannerId = "exclu-quick-redeem-scanner";
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [ready, setReady] = useState(false);
+  const [admin, setAdmin] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState("");
+  const [lookup, setLookup] = useState<RewardLookup | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    void boot();
+    return () => { void stopScanner(); };
+  }, []);
+
+  async function boot() {
+    setReady(false);
+    try {
+      let { data: sessionData } = await supabase.auth.getSession();
+      let uid = sessionData.session?.user?.id ?? null;
+      if (!uid) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) throw error;
+        uid = data.user?.id ?? null;
+      }
+      setUserId(uid);
+      const { data: allowed, error } = await supabase.rpc("is_admin");
+      if (error) throw error;
+      setAdmin(Boolean(allowed));
+    } catch (e: any) {
+      setMessage(e?.message || "No se pudo abrir el canje rápido.");
+    } finally {
+      setReady(true);
+    }
+  }
+
+  async function stopScanner() {
+    const instance = scannerRef.current;
+    scannerRef.current = null;
+    setScanning(false);
+    if (!instance) return;
+    try {
+      if (instance.isScanning) await instance.stop();
+    } catch {}
+    try { await instance.clear(); } catch {}
+  }
+
+  async function startScanner() {
+    if (busy || scanning) return;
+    setLookup(null);
+    setMessage(null);
+    setCode("");
+    try {
+      const instance = new Html5Qrcode(scannerId);
+      scannerRef.current = instance;
+      setScanning(true);
+      await instance.start(
+        { facingMode: "environment" },
+        { fps: 12, qrbox: { width: 260, height: 260 }, aspectRatio: 1 },
+        async (decodedText) => {
+          const clean = String(decodedText || "").trim().toUpperCase();
+          if (!clean) return;
+          await stopScanner();
+          setCode(clean);
+          await lookupCode(clean);
+        },
+        () => {}
+      );
+    } catch (e: any) {
+      await stopScanner();
+      setMessage("No pude abrir la cámara. Puedes introducir el código manualmente.");
+    }
+  }
+
+  async function lookupCode(forced?: string) {
+    const clean = (forced ?? code).trim().toUpperCase();
+    if (!clean || busy) return;
+    setBusy(true);
+    setMessage(null);
+    setLookup(null);
+    try {
+      const { data, error } = await supabase.rpc("admin_lookup_reward", { p_reward_code: clean });
+      if (error) throw error;
+      const result = (data ?? { found: false }) as RewardLookup;
+      setLookup(result);
+      if (!result.found) setMessage(result.message || "Código no encontrado.");
+    } catch (e: any) {
+      setMessage(e?.message || "No se pudo comprobar el premio.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function redeem() {
+    if (!lookup?.reward_code || busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { data, error } = await supabase.rpc("redeem_reward", { p_reward_code: lookup.reward_code });
+      if (error) throw error;
+      if (!data?.valid) {
+        setMessage(data?.message || "Este premio no se puede canjear.");
+        await lookupCode(lookup.reward_code);
+        return;
+      }
+      setMessage(`✓ ${data.prize_name} CANJEADO`);
+      setLookup({ ...lookup, status: "redeemed", redeemed_at: new Date().toISOString() });
+      navigator.vibrate?.([80,40,120]);
+    } catch (e: any) {
+      setMessage(e?.message || "No se pudo canjear el premio.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function nextCustomer() {
+    setLookup(null);
+    setCode("");
+    setMessage(null);
+    void startScanner();
+  }
+
+  if (!ready) return <div style={{minHeight:"100vh",background:"#020706",color:"#fff",display:"grid",placeItems:"center",padding:24}}><b>Abriendo canje rápido…</b></div>;
+
+  if (!admin) {
+    const sql = userId ? `insert into public.admin_users(user_id) values ('${userId}') on conflict do nothing;` : "";
+    return <div style={{minHeight:"100vh",background:"#020706",color:"#fff",padding:24,display:"grid",placeItems:"center"}}>
+      <div style={{maxWidth:520,width:"100%",border:"1px solid #17413a",borderRadius:20,padding:22,background:"#07100e"}}>
+        <h1 style={{marginTop:0}}>CANJE RÁPIDO</h1>
+        <p>Este móvil todavía no está autorizado como administrador.</p>
+        <small>ID de esta sesión</small>
+        <code style={{display:"block",wordBreak:"break-all",margin:"8px 0 14px"}}>{userId ?? "Sin sesión"}</code>
+        <textarea readOnly value={sql} style={{width:"100%",minHeight:100,background:"#000",color:"#fff",border:"1px solid #28584f",borderRadius:12,padding:10}}/>
+        <button onClick={()=>navigator.clipboard?.writeText(sql)} style={{width:"100%",marginTop:10,padding:14,border:0,borderRadius:12,fontWeight:900}}>COPIAR SQL DE ACCESO</button>
+        <button onClick={boot} style={{width:"100%",marginTop:10,padding:14,border:"1px solid #2dd3be",background:"transparent",color:"#fff",borderRadius:12,fontWeight:900}}>YA HE DADO ACCESO</button>
+      </div>
+    </div>;
+  }
+
+  const alreadyRedeemed = lookup?.status === "redeemed";
+
+  return <div style={{minHeight:"100vh",background:"#020706",color:"#fff",padding:"18px 14px 28px",fontFamily:"inherit"}}>
+    <div style={{maxWidth:620,margin:"0 auto"}}>
+      <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:14}}>
+        <div><small style={{color:"#f4b31a",fontWeight:900}}>LA EXCLUSIVA</small><h1 style={{margin:"4px 0 0",fontSize:28}}>CANJE RÁPIDO</h1></div>
+        <a href="#/admin" style={{color:"#fff",textDecoration:"none",border:"1px solid #28584f",padding:"9px 12px",borderRadius:10}}>Admin</a>
+      </header>
+
+      {message && <div style={{padding:14,borderRadius:14,marginBottom:12,background:message.startsWith("✓")?"#093b31":"#3a1616",border:`1px solid ${message.startsWith("✓")?"#2dd3be":"#b94a4a"}`,fontWeight:800}}>{message}</div>}
+
+      {!lookup && <>
+        <div style={{border:"1px solid #17413a",borderRadius:20,padding:14,background:"#07100e"}}>
+          <div id={scannerId} style={{width:"100%",overflow:"hidden",borderRadius:16,background:"#000"}}/>
+          {!scanning && <button onClick={startScanner} disabled={busy} style={{width:"100%",padding:"18px 14px",marginTop:10,border:0,borderRadius:14,fontWeight:950,fontSize:19,background:"#16b8a6",color:"#00120f"}}>📷 ESCANEAR PREMIO</button>}
+          {scanning && <button onClick={()=>void stopScanner()} style={{width:"100%",padding:13,marginTop:10,border:"1px solid #b94a4a",borderRadius:12,background:"transparent",color:"#fff",fontWeight:800}}>CERRAR CÁMARA</button>}
+        </div>
+
+        <div style={{margin:"14px 0",textAlign:"center",opacity:.6,fontWeight:800}}>— O CÓDIGO MANUAL —</div>
+        <div style={{display:"flex",gap:8}}>
+          <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter") void lookupCode();}} placeholder="EXC-12-ABC123" autoCapitalize="characters" style={{flex:1,minWidth:0,padding:15,borderRadius:12,border:"1px solid #28584f",background:"#000",color:"#fff",fontSize:18}}/>
+          <button onClick={()=>void lookupCode()} disabled={busy || !code.trim()} style={{padding:"0 16px",border:0,borderRadius:12,fontWeight:900,background:"#e2a214",color:"#111"}}>BUSCAR</button>
+        </div>
+      </>}
+
+      {lookup?.found && <div style={{border:`2px solid ${alreadyRedeemed?"#b94a4a":"#2dd3be"}`,borderRadius:22,padding:20,background:"#07100e",textAlign:"center"}}>
+        <div style={{fontSize:46,marginBottom:6}}>{lookup.prize_icon || "🎁"}</div>
+        <small style={{opacity:.65}}>PREMIO</small>
+        <h2 style={{fontSize:30,margin:"4px 0 10px"}}>{lookup.prize_name}</h2>
+        <div style={{display:"grid",gap:7,textAlign:"left",background:"#020706",padding:14,borderRadius:14}}>
+          <div><small style={{opacity:.6}}>CÓDIGO</small><strong style={{display:"block",fontSize:19}}>{lookup.reward_code}</strong></div>
+          <div><small style={{opacity:.6}}>CLIENTE</small><strong style={{display:"block"}}>{lookup.phone_masked || "Teléfono protegido"}</strong></div>
+          <div><small style={{opacity:.6}}>ESTADO</small><strong style={{display:"block",color:alreadyRedeemed?"#ff7373":"#54e3c8"}}>{alreadyRedeemed ? "YA CANJEADO" : "PENDIENTE"}</strong></div>
+          {lookup.redeemed_at && <div><small style={{opacity:.6}}>CANJEADO</small><strong style={{display:"block"}}>{new Date(lookup.redeemed_at).toLocaleString("es-ES")}</strong></div>}
+        </div>
+
+        {!alreadyRedeemed ? <button onClick={()=>void redeem()} disabled={busy} style={{width:"100%",padding:"20px 14px",marginTop:14,border:0,borderRadius:14,fontWeight:950,fontSize:21,background:"#20c9a9",color:"#00130f"}}>✅ CANJEAR AHORA</button> :
+        <div style={{marginTop:14,padding:16,borderRadius:14,background:"#3a1616",fontWeight:950}}>⛔ ESTE PREMIO YA FUE CANJEADO</div>}
+
+        <button onClick={nextCustomer} disabled={busy} style={{width:"100%",padding:"16px 14px",marginTop:10,border:"1px solid #e2a214",borderRadius:14,fontWeight:900,background:"transparent",color:"#fff"}}>📷 ESCANEAR SIGUIENTE</button>
+      </div>}
+    </div>
+  </div>;
+}
+
 function AdminPanel() {
   const [ready, setReady] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [overview, setOverview] = useState<AdminOverview>({});
+  const [dailyStats, setDailyStats] = useState<AdminDayStats[]>([]);
+  const [inventoryRows, setInventoryRows] = useState<AdminInventoryRow[]>([]);
   const [code, setCode] = useState("");
   const [lookup, setLookup] = useState<RewardLookup | null>(null);
   const [busy, setBusy] = useState(false);
@@ -3099,9 +3375,17 @@ function AdminPanel() {
   }
 
   async function loadOverview() {
-    const { data, error } = await supabase.rpc("admin_overview", { p_festival_slug: FESTIVAL });
+    const [{ data, error }, daily, inventory] = await Promise.all([
+      supabase.rpc("admin_overview", { p_festival_slug: FESTIVAL }),
+      supabase.rpc("admin_daily_stats", { p_festival_slug: FESTIVAL }),
+      supabase.rpc("admin_inventory_detail", { p_festival_slug: FESTIVAL }),
+    ]);
     if (error) throw error;
+    if (daily.error) throw daily.error;
+    if (inventory.error) throw inventory.error;
     setOverview((data ?? {}) as AdminOverview);
+    setDailyStats(Array.isArray(daily.data) ? (daily.data as AdminDayStats[]) : []);
+    setInventoryRows(Array.isArray(inventory.data) ? (inventory.data as AdminInventoryRow[]) : []);
   }
 
   async function refresh() {
@@ -3143,23 +3427,11 @@ function AdminPanel() {
     } finally { setBusy(false); }
   }
 
-  async function adjustStock(prizeId: string, current: number, total: number, delta: number) {
-    const next = Math.max(0, Math.min(total, current + delta));
-    if (next === current || busy) return;
-    setBusy(true); setMessage(null);
-    try {
-      const { error } = await supabase.rpc("admin_set_prize_stock", { p_prize_id: prizeId, p_stock_remaining: next });
-      if (error) throw error;
-      await loadOverview();
-    } catch (error: any) { setMessage(error?.message || "No se pudo cambiar el stock."); }
-    finally { setBusy(false); }
-  }
-
   async function drawRaffle() {
     setShowRaffleConfirm(false);
     setBusy(true); setMessage(null);
     try {
-      const { data, error } = await supabase.rpc("draw_final_raffle", { p_festival_slug: FESTIVAL });
+      const { data, error } = await supabase.rpc("draw_final_raffle_mg", { p_festival_slug: FESTIVAL });
       if (error) throw error;
       setMessage(`Sorteo realizado. ${Array.isArray(data) ? data.length : 0} ganador(es) guardados.`);
       await loadOverview();
@@ -3202,7 +3474,7 @@ function AdminPanel() {
     return <div className="admin admin-access"><div className="admin-access-card"><LockKeyhole size={42}/><h1>EXCLU FEST · ADMIN</h1><p>Este navegador todavía no tiene permiso de administrador.</p>{message && <div className="admin-alert error">{message}</div>}<small>ID de esta sesión</small><code>{userId ?? "Sin sesión"}</code><p className="admin-help">Para autorizar este navegador, copia esta línea en <b>Supabase → SQL Editor</b>, ejecútala y vuelve aquí.</p><textarea readOnly value={sql}/><button onClick={() => navigator.clipboard?.writeText(sql)}>COPIAR SQL</button><button className="admin-secondary" onClick={bootAdmin}>YA HE DADO ACCESO</button><a href="/">← Volver a EXCLU FEST</a></div></div>;
   }
 
-  const prizes = overview.prizes ?? [];
+  const prizes = (overview.prizes ?? []).filter((p) => p.active);
   const claims = overview.recent_claims ?? [];
   const winners = overview.winners ?? [];
 
@@ -3223,13 +3495,74 @@ function AdminPanel() {
     <div className="admin-columns">
       <section className="admin-panel admin-redeem"><div className="admin-panel-title"><div><span>CANJE</span><h2>Validar premio</h2></div><Gift/></div><p>Introduce el código que te enseñe el cliente. Primero se comprueba y después decides si lo canjeas.</p><div className="redeem-search"><input value={code} onChange={(e)=>setCode(e.target.value.toUpperCase())} onKeyDown={(e)=>e.key === "Enter" && lookupCode()} placeholder="EXC-12-ABC123"/><button onClick={lookupCode} disabled={busy}>COMPROBAR</button></div>{lookup && <div className={`lookup-card ${lookup.status === "redeemed" ? "used" : ""}`}>{lookup.found ? <><div className="lookup-prize"><span>{lookup.prize_icon ?? "🎁"}</span><div><small>{lookup.reward_code}</small><h3>{lookup.prize_name}</h3><p>{lookup.phone_masked}</p></div></div>{lookup.status === "redeemed" ? <div className="lookup-state used"><XCircle/> YA CANJEADO</div> : <><div className="lookup-state pending"><CheckCircle2/> CÓDIGO VÁLIDO</div><button className="redeem-confirm" onClick={redeem} disabled={busy}>MARCAR COMO CANJEADO</button></>}</> : <div className="lookup-state used"><XCircle/> {lookup.message || "Código no encontrado"}</div>}</div>}</section>
 
-      <section className="admin-panel"><div className="admin-panel-title"><div><span>INVENTARIO</span><h2>Stock de premios</h2></div><Gift/></div><div className="stock-list">{prizes.map((p)=><div className="stock-row" key={p.id}><span className="stock-icon">{p.icon}</span><div className="stock-name"><b>{p.name}</b><small>{p.stock_remaining} de {p.stock_total} disponibles</small><div className="stock-bar"><i style={{width:`${p.stock_total ? (p.stock_remaining/p.stock_total)*100 : 0}%`}}/></div></div><div className="stock-controls"><button disabled={busy || p.stock_remaining<=0} onClick={()=>adjustStock(p.id,p.stock_remaining,p.stock_total,-1)}>−</button><b>{p.stock_remaining}</b><button disabled={busy || p.stock_remaining>=p.stock_total} onClick={()=>adjustStock(p.id,p.stock_remaining,p.stock_total,1)}>+</button></div></div>)}</div></section>
+      <section className="admin-panel">
+        <div className="admin-panel-title"><div><span>INVENTARIO REAL</span><h2>Premios físicos</h2></div><Gift/></div>
+        <p style={{opacity:.72,marginTop:0}}>Lectura rápida: qué había, qué ha adjudicado la app, qué falta recoger y qué queda disponible.</p>
+        <div className="stock-list">
+          {inventoryRows.filter((p)=>p.active && !/^\+\d+\s+papeleta/i.test(p.name)).map((p)=>
+            <div className="stock-row" key={p.id} style={{alignItems:"flex-start"}}>
+              <span className="stock-icon">{p.icon}</span>
+              <div className="stock-name" style={{width:"100%"}}>
+                <b>{p.name}</b>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:6,marginTop:8}}>
+                  <div><small>INICIAL</small><strong style={{display:"block"}}>{p.stock_total}</strong></div>
+                  <div><small>ADJUDICADOS</small><strong style={{display:"block"}}>{p.adjudicated}</strong></div>
+                  <div><small>PENDIENTES</small><strong style={{display:"block",color:"#f5b544"}}>{p.pending}</strong></div>
+                  <div><small>CANJEADOS</small><strong style={{display:"block",color:"#54e3c8"}}>{p.redeemed}</strong></div>
+                  <div><small>QUEDAN</small><strong style={{display:"block",fontSize:20}}>{p.stock_remaining}</strong></div>
+                </div>
+                <div className="stock-bar" style={{marginTop:8}}><i style={{width:`${p.stock_total ? (p.stock_remaining/p.stock_total)*100 : 0}%`}}/></div>
+              </div>
+            </div>)}
+        </div>
+
+        <div style={{marginTop:18,paddingTop:16,borderTop:"1px solid rgba(255,255,255,.08)"}}>
+          <div className="admin-panel-title"><div><span>SORTEO</span><h2>Participaciones extra</h2></div><Ticket/></div>
+          <p style={{opacity:.72,marginTop:0}}>Estas no son productos físicos y por eso aparecen separadas.</p>
+          <div className="stock-list">
+            {inventoryRows.filter((p)=>p.active && /^\+\d+\s+papeleta/i.test(p.name)).map((p)=>
+              <div className="stock-row" key={p.id}>
+                <span className="stock-icon">{p.icon}</span>
+                <div className="stock-name"><b>{p.name}</b><small>Adjudicadas: {p.adjudicated} · Quedan: {p.stock_remaining} de {p.stock_total}</small></div>
+              </div>)}
+          </div>
+        </div>
+      </section>
     </div>
+
+    <section className="admin-panel" style={{marginTop:22}}>
+      <div className="admin-panel-title"><div><span>ESTADÍSTICAS POR DÍA</span><h2>11 · 12 · 13 de septiembre</h2></div><BarChart3/></div>
+      <p style={{opacity:.72}}>Datos históricos reales calculados desde Supabase. No modifica ningún registro.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14}}>
+        {dailyStats.map((d)=><details key={d.day} open style={{border:"1px solid rgba(45,211,190,.22)",borderRadius:16,padding:14,background:"rgba(3,14,12,.55)"}}>
+          <summary style={{cursor:"pointer",fontWeight:800,fontSize:18}}>DÍA {d.day} · {d.game_type?.toUpperCase()}</summary>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginTop:12}}>
+            <div><small>PARTICIPANTES</small><b style={{display:"block",fontSize:24}}>{d.participants}</b></div>
+            <div><small>JUGADAS</small><b style={{display:"block",fontSize:24}}>{d.plays}</b></div>
+            <div><small>PREMIOS</small><b style={{display:"block",fontSize:24}}>{d.prizes_generated}</b></div>
+            <div><small>PENDIENTES</small><b style={{display:"block",fontSize:24}}>{d.prizes_pending}</b></div>
+            <div><small>CANJEADOS</small><b style={{display:"block",fontSize:24}}>{d.prizes_redeemed}</b></div>
+            <div><small>ENTRADAS SORTEO</small><b style={{display:"block",fontSize:24}}>{d.raffle_entries}</b></div>
+          </div>
+          <div style={{marginTop:14}}>
+            <b>Premios entregados</b>
+            {(d.prizes ?? []).length===0 ? <p style={{opacity:.65}}>Sin premios registrados.</p> :
+              <div style={{marginTop:8,display:"grid",gap:6}}>{d.prizes.map((p)=><div key={p.prize_name} style={{display:"flex",justifyContent:"space-between",gap:10,borderBottom:"1px solid rgba(255,255,255,.07)",padding:"6px 0"}}><span>{p.icon} {p.prize_name}</span><span><b>{p.generated}</b> · {p.pending} pend. · {p.redeemed} canj.</span></div>)}</div>}
+          </div>
+          <details style={{marginTop:14}}>
+            <summary style={{cursor:"pointer",fontWeight:700}}>Ver participantes del día ({d.participant_list?.length ?? 0})</summary>
+            <div style={{maxHeight:240,overflow:"auto",marginTop:8}}>
+              {(d.participant_list ?? []).map((p,i)=><div key={`${p.phone_masked}-${p.played_at}-${i}`} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.06)"}}><span>{p.phone_masked || "Teléfono oculto"}</span><small>{new Date(p.played_at).toLocaleString("es-ES")}</small></div>)}
+            </div>
+          </details>
+        </details>)}
+      </div>
+    </section>
 
     <div className="admin-columns admin-bottom-grid">
       <section className="admin-panel"><div className="admin-panel-title"><div><span>ACTIVIDAD</span><h2>Últimos premios</h2></div><RefreshCw/></div><div className="claims-table">{claims.length === 0 ? <p className="empty-admin">Todavía no hay premios generados.</p> : claims.map((c)=><div className="claim-row" key={c.reward_code}><span>{c.icon}</span><div><b>{c.prize_name}</b><code>{c.reward_code}</code><small>{c.phone_masked}</small></div><em className={c.status}>{c.status === "redeemed" ? "CANJEADO" : "PENDIENTE"}</em></div>)}</div></section>
 
-      <section className="admin-panel raffle-panel"><div className="admin-panel-title"><div><span>SORTEO FINAL</span><h2>3 desayunos para dos</h2></div><Trophy/></div>{winners.length > 0 ? <div className="winner-list">{winners.map((w)=><div className="winner-row" key={w.position}><b>#{w.position}</b><div><strong>{w.phone_masked || "Participante"}</strong><small>{w.entries} participaciones en el sorteo</small></div><Trophy/></div>)}</div> : <><p>El sorteo utiliza todas las participaciones acumuladas y selecciona hasta 3 personas distintas.</p><button className="raffle-button" onClick={()=>setShowRaffleConfirm(true)} disabled={busy || (overview.raffle_entries ?? 0) === 0}><Trophy/> REALIZAR SORTEO FINAL</button><small className="raffle-warning">Una vez realizado, los ganadores quedan guardados y el sorteo no se repite.</small></>}</section>
+      <section className="admin-panel raffle-panel"><div className="admin-panel-title"><div><span>SORTEO FINAL</span><h2>Cesta de La Alacena de MG</h2></div><Trophy/></div>{winners.length > 0 ? <div className="winner-list">{winners.map((w)=><div className="winner-row" key={w.position}><b>#{w.position}</b><div><strong>{w.phone_masked || "Participante"}</strong><small>{w.entries} participaciones en el sorteo</small></div><Trophy/></div>)}</div> : <><p>El sorteo utiliza todas las participaciones acumuladas y selecciona 1 persona ganadora. Cuantas más participaciones tenga, más opciones tendrá.</p><button className="raffle-button" onClick={()=>setShowRaffleConfirm(true)} disabled={busy || (overview.raffle_entries ?? 0) === 0}><Trophy/> REALIZAR SORTEO FINAL</button><small className="raffle-warning">Una vez realizado, los ganadores quedan guardados y el sorteo no se repite.</small></>}</section>
     </div>
 
     {overview.test_mode && <section className="admin-test-tools">
@@ -3237,12 +3570,12 @@ function AdminPanel() {
       <p>Solo aparecen mientras el festival está en <b>MODO PRUEBAS</b>. No borran el participante ni la configuración del festival.</p>
       <div className="test-tool-grid">
         <article><h3>Repetir circuito del dispositivo</h3><p>Conserva el teléfono registrado, pero borra las jugadas, entradas de sorteo y premios generados por <b>este navegador</b>. El stock consumido por esos premios se devuelve automáticamente.</p><button disabled={busy} onClick={()=>setTestAction("participant")}><RefreshCw size={17}/> RESET PARTICIPANTE DE PRUEBA</button></article>
-        <article><h3>Repetir sorteo final</h3><p>Borra únicamente el sorteo de prueba y sus ganadores. Las participaciones acumuladas permanecen intactas para poder volver a comprobar los 3 ganadores.</p><button disabled={busy || winners.length===0} onClick={()=>setTestAction("raffle")}><Trophy size={17}/> RESET SORTEO DE PRUEBA</button></article>
+        <article><h3>Repetir sorteo final</h3><p>Borra únicamente el sorteo de prueba y sus ganadores. Las participaciones acumuladas permanecen intactas para poder volver a comprobar el ganador.</p><button disabled={busy || winners.length===0} onClick={()=>setTestAction("raffle")}><Trophy size={17}/> RESET SORTEO DE PRUEBA</button></article>
       </div>
       <small className="test-safety">🔒 Estas funciones quedan bloqueadas automáticamente cuando <code>test_mode=false</code>.</small>
     </section>}
 
-    {showRaffleConfirm && <div className="admin-modal"><div><Trophy size={42}/><h2>¿Realizar el sorteo final?</h2><p>Se seleccionarán hasta 3 ganadores distintos entre todas las participaciones guardadas.</p><button className="raffle-button" onClick={drawRaffle}>SÍ, REALIZAR SORTEO</button><button className="admin-secondary" onClick={()=>setShowRaffleConfirm(false)}>CANCELAR</button></div></div>}
+    {showRaffleConfirm && <div className="admin-modal"><div><Trophy size={42}/><h2>¿Realizar el sorteo final?</h2><p>Se seleccionará 1 ganador de la Cesta de La Alacena de MG entre todas las participaciones guardadas.</p><button className="raffle-button" onClick={drawRaffle}>SÍ, REALIZAR SORTEO</button><button className="admin-secondary" onClick={()=>setShowRaffleConfirm(false)}>CANCELAR</button></div></div>}
 
     {testAction && <div className="admin-modal"><div><RefreshCw size={42}/><h2>{testAction === "participant" ? "¿Resetear este participante de prueba?" : "¿Resetear el sorteo de prueba?"}</h2><p>{testAction === "participant" ? "Se borrarán las jugadas, premios y entradas del sorteo de este navegador. El teléfono seguirá registrado y podrá volver a jugar desde el día 11." : "Se borrarán únicamente los ganadores y el sorteo realizado. Las entradas del sorteo seguirán guardadas."}</p><button className="test-confirm" onClick={testAction === "participant" ? resetTestParticipant : resetTestRaffle}>{testAction === "participant" ? "SÍ, RESET PARTICIPANTE" : "SÍ, RESET SORTEO"}</button><button className="admin-secondary" onClick={()=>setTestAction(null)}>CANCELAR</button></div></div>}
   </div>;
